@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package mass.app;
+
+option go_package = "github.com/chinese-room-solutions/mass-sdk/app/rpc";
+
+// App is implemented by apps and called by the MASS host.
+service App {
+    // GetInfo returns app metadata and model requirements.
+    rpc GetInfo(GetInfoRequest) returns (AppInfo) {}
+
+    // Health returns whether the app is healthy.
+    rpc Health(HealthRequest) returns (HealthResponse) {}
+
+    // HandleRequest dispatches an app-specific RPC.
+    // The app calls MASS over HTTP (MASS_API_URL) as needed and returns JSON.
+    rpc HandleRequest(HandleRequestRequest) returns (HandleRequestResponse) {}
+
+    // HandleRequestStream dispatches an app-specific streaming RPC.
+    // Each message in the response stream is one chunk delivered to the caller
+    // as an SSE event by MASS.
+    rpc HandleRequestStream(HandleRequestRequest) returns (stream HandleRequestStreamChunk) {}
+
+    // SetLogLevel changes the app's log verbosity at runtime.
+    rpc SetLogLevel(SetLogLevelRequest) returns (SetLogLevelResponse) {}
+}
+
+message GetInfoRequest {}
+
+message AppInfo {
+    string name = 1;
+    string version = 2;
+    string description = 3;
+    repeated ModelRequirement models = 4;
+}
+
+message ModelRequirement {
+    string name = 1;
+    ModelType type = 2;
+    ChatModelConfig chat_config = 3;
+    EmbeddingModelConfig embedding_config = 4;
+}
+
+enum ModelType {
+    CHAT = 0;
+    EMBEDDING = 1;
+}
+
+message ChatModelConfig {
+    string path = 1;
+    int32 context_size = 2;
+    int32 batch_size = 3;
+    int32 threads = 4;
+    int32 max_concurrent = 5;
+    int32 max_tokens = 6;
+    string flash_attn = 7;
+    int32 gpu_layers = 8;
+    string main_gpu = 9;
+    string tensor_split = 10;
+    bool thinking = 11;
+    string mmproj_path = 12;    // Vision projector GGUF path (enables vision/multimodal)
+}
+
+message EmbeddingModelConfig {
+    string path = 1;
+    int32 context_size = 2;
+    int32 threads = 3;
+    int32 max_concurrent = 4;
+    int32 gpu_layers = 5;
+    string main_gpu = 6;
+    string tensor_split = 7;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    bool ok = 1;
+}
+
+message HandleRequestRequest {
+    string method = 1;
+    bytes payload = 2;
+    reserved 3; // was inference_host_id
+}
+
+message HandleRequestResponse {
+    bytes payload = 1;
+    string error = 2;
+    string error_code = 3;
+}
+
+// HandleRequestStreamChunk is one frame of a streaming response. The terminal
+// frame either has done=true (clean end) or a non-empty error.
+message HandleRequestStreamChunk {
+    bytes payload = 1;
+    bool done = 2;
+    string error = 3;
+    string error_code = 4;
+}
+
+message SetLogLevelRequest {
+    string level = 1;  // zerolog level name: "trace","debug","info","warn","error"
+    string format = 2; // "console" or "json" (empty = no change)
+}
+
+message SetLogLevelResponse {}

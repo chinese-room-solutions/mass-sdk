@@ -1,0 +1,198 @@
+/* ── MASS theme variables ─────────────────────────────────────────────────── */
+/* Shared between MASS and standalone modules. Imported by MASS's Tailwind     */
+/* build and embedded by standalone module servers.                             */
+
+html.sl-theme-light {
+  --mass-bg-base:    #f7f5f2;
+  --mass-bg-panel:   #fdfcfb;
+  --mass-bg-hover:   #efecea;
+  --mass-bg-active:  #f0eeff;
+  --mass-border:     #e0dcd8;
+  --mass-text:       #111827;
+  --mass-text-muted: #4b5563;
+  --mass-text-faint: #4b5563;
+  --mass-avatar-bg:  #71717a;
+  --mass-badge-bg:   #d4d4d8;
+  --mass-badge-text: #333338;
+  --mass-badge-alt-bg:   #ecfdf5;
+  --mass-badge-alt-text: #065f46;
+  --mass-fb-selected:#bfdbfe;
+  --mass-log-time:   #9ca3af;
+  --mass-log-msg:    #1f2937;
+  --mass-log-key:    #0891b2;
+  --mass-log-val:    #4b5563;
+  --mass-log-inf:    #16a34a;
+  --mass-log-dbg:    #9ca3af;
+  --mass-log-wrn:    #d97706;
+  --mass-log-err:    #dc2626;
+}
+
+html.sl-theme-dark,
+html:not(.sl-theme-light) {
+  --mass-bg-base:    #171616;
+  --mass-bg-panel:   #1e1d1d;
+  --mass-bg-hover:   #2e2d2d;
+  --mass-bg-active:  rgba(64,64,64,0.6);
+  --mass-border:     #3d3d3d;
+  --mass-text:       #d4d4d8;
+  --mass-text-muted: #9a9a9a;
+  --mass-text-faint: #707070;
+
+  /* Override Shoelace neutral scale for better contrast on dark bg */
+  --sl-color-neutral-400: #9a9a9a;
+  --sl-color-neutral-500: #808080;
+  --sl-color-neutral-600: #636363;
+  --sl-input-border-color: #3d3d3d;
+  --mass-avatar-bg:  #404040;
+  --mass-badge-bg:   #52525b;
+  --mass-badge-text: #e4e4e7;
+  --mass-badge-alt-bg:   #1a2e1a;
+  --mass-badge-alt-text: #5bd896;
+  --mass-fb-selected:#1e3a5f;
+  --mass-log-time:   #6b7280;
+  --mass-log-msg:    #e5e7eb;
+  --mass-log-key:    #67e8f9;
+  --mass-log-val:    #9ca3af;
+  --mass-log-inf:    #86efac;
+  --mass-log-dbg:    #9ca3af;
+  --mass-log-wrn:    #fde68a;
+  --mass-log-err:    #fca5a5;
+}
+
+/* ── Brand colors ────────────────────────────────────────────────────── */
+:root,
+.sl-theme-dark,
+.sl-theme-light {
+  --mass-blue:  #6199E3;
+  --mass-green: #B2F379;
+  --mass-red:   #EE5050;
+
+  /* Primary palette (based on --mass-blue) */
+  --sl-color-primary-50:  #edf4fd;
+  --sl-color-primary-100: #cfe0f8;
+  --sl-color-primary-200: #a8c9f1;
+  --sl-color-primary-300: #81b1ea;
+  --sl-color-primary-400: #6199E3;
+  --sl-color-primary-500: #5489d2;
+  --sl-color-primary-600: #4778c0;
+  --sl-color-primary-700: #3a66a9;
+  --sl-color-primary-800: #2f548d;
+  --sl-color-primary-900: #244170;
+  --sl-color-primary-950: #192e50;
+
+  /* Danger palette (based on --mass-red) */
+  --sl-color-danger-50:  #fef2f2;
+  --sl-color-danger-100: #fde3e3;
+  --sl-color-danger-200: #fbb9b9;
+  --sl-color-danger-300: #f48f8f;
+  --sl-color-danger-400: #EE5050;
+  --sl-color-danger-500: #da4444;
+  --sl-color-danger-600: #c53a3a;
+  --sl-color-danger-700: #a83030;
+  --sl-color-danger-800: #8b2828;
+  --sl-color-danger-900: #6e2020;
+  --sl-color-danger-950: #4a1515;
+
+  /* Success palette (based on --mass-green) */
+  --sl-color-success-50:  #f4fde8;
+  --sl-color-success-100: #e4f9c5;
+  --sl-color-success-200: #cef49a;
+  --sl-color-success-300: #B2F379;
+  --sl-color-success-400: #9ae35c;
+  --sl-color-success-500: #7ec83f;
+  --sl-color-success-600: #65a832;
+  --sl-color-success-700: #4e8828;
+  --sl-color-success-800: #3b6a1f;
+  --sl-color-success-900: #2b4f17;
+  --sl-color-success-950: #1a3310;
+}
+
+/* ── Base component styles ───────────────────────────────────────────── */
+
+/* Primary buttons: brand blue */
+sl-button[variant="primary"]::part(base) {
+  background-color: var(--mass-blue) !important;
+  border-color: var(--sl-color-primary-500) !important;
+  color: #faf8f6;
+}
+sl-button[variant="primary"]:hover::part(base) {
+  background-color: var(--sl-color-primary-500) !important;
+  border-color: var(--sl-color-primary-600) !important;
+}
+
+/* Danger buttons: brand red */
+sl-button[variant="danger"]::part(base) {
+  background-color: var(--mass-red) !important;
+  border-color: #da4444 !important;
+  color: #faf8f6;
+}
+sl-button[variant="danger"]:hover::part(base) {
+  background-color: #da4444 !important;
+  border-color: #c53a3a !important;
+}
+
+/* Default buttons: deepest background, matching input field style */
+sl-button[variant="default"]::part(base) {
+  background-color: var(--mass-bg-base) !important;
+  border-color: var(--mass-border) !important;
+  color: var(--mass-text) !important;
+}
+sl-button[variant="default"]:hover::part(base) {
+  background-color: var(--mass-bg-hover) !important;
+}
+
+/* Warm off-white instead of pure white */
+html.sl-theme-dark,
+html:not(.sl-theme-light) {
+  --sl-color-neutral-0: #faf8f6;
+}
+html.sl-theme-light {
+  --sl-color-neutral-0: #faf8f6;
+}
+
+/* Select dropdown popup: matches the input field it drops from */
+sl-select::part(listbox) {
+  background: var(--mass-bg-base) !important;
+  border: 1px solid var(--mass-border) !important;
+  padding: 0.25rem 0 !important;
+}
+
+/* Select options: compact, themed */
+sl-option::part(base) { padding: 0.35rem 0.6rem; font-size: var(--sl-font-size-small); color: var(--mass-text) !important; }
+sl-option:hover::part(base) { background: var(--mass-bg-hover) !important; }
+sl-option[aria-selected="true"]::part(base) { background: var(--mass-bg-active) !important; }
+sl-option::part(checked-icon) { display: none; }
+
+/* Shoelace inputs/selects/textareas: use base (deepest) background for inset look */
+sl-input::part(base),
+sl-select::part(combobox),
+sl-textarea::part(base) {
+  background-color: var(--mass-bg-base) !important;
+  border-color: var(--mass-border) !important;
+  color: var(--mass-text) !important;
+}
+sl-input::part(input),
+sl-select::part(display-input),
+sl-textarea::part(textarea) { color: var(--mass-text) !important; }
+
+/* Form labels */
+sl-input::part(form-control-label),
+sl-select::part(form-control-label),
+sl-textarea::part(form-control-label) { color: var(--mass-text-muted) !important; }
+
+/* ── Base body styles ────────────────────────────────────────────────── */
+body { background: var(--mass-bg-base) !important; color: var(--mass-text) !important; }
+
+/* ── Scrollbars ──────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mass-border) transparent;
+}
+*:hover {
+  scrollbar-color: var(--mass-text-muted) transparent;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--mass-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mass-text-muted); }
+::-webkit-scrollbar-corner { background: transparent; }
