@@ -34,56 +34,6 @@ func TestToInt32(t *testing.T) {
 	}
 }
 
-func TestFormatBytes(t *testing.T) {
-	tests := []struct {
-		name string
-		b    int64
-		want string
-	}{
-		{"zero bytes", 0, "0 B"},
-		{"one byte", 1, "1 B"},
-		{"below KB", 1023, "1023 B"},
-		{"exactly 1 KB", 1024, "1.0 KB"},
-		{"1.5 KB", 1536, "1.5 KB"},
-		{"below MB", 1<<20 - 1, "1024.0 KB"},
-		{"exactly 1 MB", 1 << 20, "1.0 MB"},
-		{"500 MB", 500 << 20, "500.0 MB"},
-		{"below GB", 1<<30 - 1, "1024.0 MB"},
-		{"exactly 1 GB", 1 << 30, "1.0 GB"},
-		{"4.2 GB", 4509715660, "4.2 GB"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := FormatBytes(tt.b)
-			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestFormatCount(t *testing.T) {
-	tests := []struct {
-		name string
-		n    int64
-		want string
-	}{
-		{"zero", 0, "0"},
-		{"small number", 42, "42"},
-		{"999", 999, "999"},
-		{"exactly 1k", 1000, "1.0k"},
-		{"1.5k", 1500, "1.5k"},
-		{"999k", 999_999, "1000.0k"},
-		{"exactly 1M", 1_000_000, "1.0M"},
-		{"2.5M", 2_500_000, "2.5M"},
-		{"large number", 100_000_000, "100.0M"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := FormatCount(tt.n)
-			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestFilenameToDlID(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -102,28 +52,6 @@ func TestFilenameToDlID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FilenameToDlID(tt.filename)
-			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestTruncate(t *testing.T) {
-	tests := []struct {
-		name   string
-		s      string
-		maxLen int
-		want   string
-	}{
-		{"short string unchanged", "hello", 10, "hello"},
-		{"exact length unchanged", "hello", 5, "hello"},
-		{"long string truncated", "hello world", 8, "hello..."},
-		{"maxLen equals 3", "abcdef", 3, "..."},
-		{"empty string", "", 10, ""},
-		{"single char within limit", "a", 5, "a"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := Truncate(tt.s, tt.maxLen)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -182,29 +110,6 @@ func TestRenderAlert(t *testing.T) {
 func TestRenderAlert_NoDurationAttr(t *testing.T) {
 	got := RenderAlert("x", "msg", "info", 0)
 	require.NotContains(t, got, "duration")
-}
-
-func TestJSONEscape(t *testing.T) {
-	tests := []struct {
-		name string
-		s    string
-		want string
-	}{
-		{"no special chars", "hello", "hello"},
-		{"double quotes", `say "hi"`, `say \"hi\"`},
-		{"backslash", `path\to\file`, `path\\to\\file`},
-		{"newline", "line1\nline2", `line1\nline2`},
-		{"carriage return", "line1\rline2", `line1\rline2`},
-		{"tab", "col1\tcol2", `col1\tcol2`},
-		{"mixed special chars", "a\"b\\c\nd\re\tf", `a\"b\\c\nd\re\tf`},
-		{"empty string", "", ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := JSONEscape(tt.s)
-			require.Equal(t, tt.want, got)
-		})
-	}
 }
 
 func TestRenderConfigStatus(t *testing.T) {

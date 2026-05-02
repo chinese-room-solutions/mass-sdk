@@ -11,7 +11,11 @@ html.sl-theme-light {
   --mass-text:       #111827;
   --mass-text-muted: #4b5563;
   --mass-text-faint: #4b5563;
-  --mass-avatar-bg:  #71717a;
+  /* Avatar reuses the page background token (one shade off from the
+     panel it sits on) so the chip reads as a distinct surface without
+     introducing a new palette entry. */
+  --mass-avatar-bg:   var(--mass-bg-base);
+  --mass-avatar-text: var(--mass-text);
   --mass-badge-bg:   #d4d4d8;
   --mass-badge-text: #333338;
   --mass-badge-alt-bg:   #ecfdf5;
@@ -43,7 +47,8 @@ html:not(.sl-theme-light) {
   --sl-color-neutral-500: #808080;
   --sl-color-neutral-600: #636363;
   --sl-input-border-color: #3d3d3d;
-  --mass-avatar-bg:  #404040;
+  --mass-avatar-bg:   var(--mass-bg-base);
+  --mass-avatar-text: var(--mass-text);
   --mass-badge-bg:   #52525b;
   --mass-badge-text: #e4e4e7;
   --mass-badge-alt-bg:   #1a2e1a;
@@ -182,6 +187,11 @@ sl-textarea::part(form-control-label) { color: var(--mass-text-muted) !important
 
 /* ── Base body styles ────────────────────────────────────────────────── */
 body { background: var(--mass-bg-base) !important; color: var(--mass-text) !important; }
+
+/* ── Badges ──────────────────────────────────────────────────────────── */
+/* Generic badges driven by --mass-badge-* variables (light/dark aware).   */
+.mass-badge     { background: var(--mass-badge-bg)     !important; color: var(--mass-badge-text)     !important; }
+.mass-badge-alt { background: var(--mass-badge-alt-bg) !important; color: var(--mass-badge-alt-text) !important; }
 
 /* ── Scrollbars ──────────────────────────────────────────────────────── */
 * {

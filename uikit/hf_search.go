@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"html"
 	"strings"
+
+	"github.com/chinese-room-solutions/mass-sdk/format"
+	"github.com/chinese-room-solutions/mass-sdk/ggufutil"
 )
 
 // HFResultModel holds data for rendering a HuggingFace search result.
@@ -36,6 +39,10 @@ type HFResultsOpts struct {
 	// DownloadURL overrides the download POST URL. When empty, defaults to
 	// /mass.v1.Mass/DownloadModel. The endpoint receives JSON {repo_id, filename}.
 	DownloadURL string
+	// SkipFooter disables the built-in Show More footer entirely. Useful
+	// when the caller renders its own pagination control bound to a
+	// non-Datastar endpoint.
+	SkipFooter bool
 }
 
 // repoToTplID converts a repo ID to a safe HTML template ID.
@@ -120,8 +127,11 @@ func RenderHFResults(moduleName string, models []HFResultModel, opts HFResultsOp
 	}
 	b.WriteString(`</div>`)
 
-	// Footer with optional Show More.
-	b.WriteString(RenderHFFooter(moduleName, opts.HasMore, opts.MoreURL))
+	// Footer with optional Show More — callers that render their own
+	// pagination control set SkipFooter=true.
+	if !opts.SkipFooter {
+		b.WriteString(RenderHFFooter(moduleName, opts.HasMore, opts.MoreURL))
+	}
 
 	b.WriteString(`</div>`) // pe-hf-results
 	return b.String()
@@ -179,7 +189,7 @@ func renderHFModelRow(b *strings.Builder, m HFResultModel, downloadedFiles map[s
 	b.WriteString(`<div class="flex-1 min-w-0">`)
 	fmt.Fprintf(b, `<div class="text-sm font-medium text-neutral-100 truncate">%s`, esc(modelName))
 	if m.Params > 0 {
-		fmt.Fprintf(b, ` <span class="font-mono text-xs font-bold bg-neutral-900 text-neutral-200 rounded px-1.5 py-0.5 ml-1" style="vertical-align:1px">%s</span>`, esc(FormatParams(m.Params)))
+		fmt.Fprintf(b, ` <span class="font-mono text-xs font-bold bg-neutral-900 text-neutral-200 rounded px-1.5 py-0.5 ml-1" style="vertical-align:1px">%s</span>`, esc(format.Params(m.Params)))
 	}
 	if label, ok := PipelineTagMap[m.PipelineTag]; ok {
 		fmt.Fprintf(b, ` <span class="font-mono text-xs font-bold bg-neutral-900 text-neutral-200 rounded px-1.5 py-0.5 ml-1" style="vertical-align:1px">%s</span>`, esc(label))
@@ -189,7 +199,7 @@ func renderHFModelRow(b *strings.Builder, m HFResultModel, downloadedFiles map[s
 	}
 	b.WriteString(`</div>`)
 	fmt.Fprintf(b, `<div class="text-xs text-neutral-500 truncate">%s · %s ↓ · %s ♥</div>`,
-		esc(m.RepoID), FormatCount(m.Downloads), FormatCount(m.Likes))
+		esc(m.RepoID), format.Count(m.Downloads), format.Count(m.Likes))
 	b.WriteString(`</div>`)
 
 	fileCount := len(m.Files)
@@ -213,7 +223,7 @@ func renderHFVariantPanel(b *strings.Builder, m HFResultModel, modelName string,
 	b.WriteString(`<div class="min-w-0 flex-1">`)
 	fmt.Fprintf(b, `<div class="text-sm font-semibold text-neutral-100 truncate">%s</div>`, esc(modelName))
 	fmt.Fprintf(b, `<div class="text-xs text-neutral-500 truncate">%s · %s ↓ · %s ♥</div>`,
-		esc(m.RepoID), FormatCount(m.Downloads), FormatCount(m.Likes))
+		esc(m.RepoID), format.Count(m.Downloads), format.Count(m.Likes))
 	b.WriteString(`</div>`)
 	b.WriteString(`<button onclick="window.__hfClose()" title="Close" ` +
 		`style="flex-shrink:0;margin-left:8px;padding:2px;line-height:1;background:none;border:none;cursor:pointer;color:#737373">` +
@@ -222,12 +232,12 @@ func renderHFVariantPanel(b *strings.Builder, m HFResultModel, modelName string,
 
 	if m.Description != "" {
 		fmt.Fprintf(b, `<div class="px-3 py-1.5 text-xs text-neutral-400 border-b border-neutral-700/50">%s</div>`,
-			esc(Truncate(m.Description, 120)))
+			esc(format.Truncate(m.Description, 120)))
 	}
 
 	b.WriteString(`<div class="overflow-y-auto" style="max-height:280px">`)
 	for _, f := range m.Files {
-		quant := ExtractQuant(f.Filename)
+		quant := ggufutil.ExtractQuant(f.Filename)
 		b.WriteString(`<div class="flex items-center gap-2 px-3 py-2 hover:bg-neutral-700/40 border-b border-neutral-700/20 last:border-b-0">`)
 		if quant != "" {
 			fmt.Fprintf(b, `<span style="min-width:4.5rem;flex-shrink:0;text-align:center" class="font-mono text-xs font-bold bg-neutral-900 text-neutral-200 rounded px-1.5 py-0.5">%s</span>`, esc(quant))
@@ -235,7 +245,7 @@ func renderHFVariantPanel(b *strings.Builder, m HFResultModel, modelName string,
 			b.WriteString(`<span style="min-width:4.5rem;flex-shrink:0"></span>`)
 		}
 		fmt.Fprintf(b, `<span class="text-xs text-neutral-300 truncate flex-1" title="%s">%s</span>`, esc(f.Filename), esc(f.Filename))
-		fmt.Fprintf(b, `<span class="text-xs text-neutral-500 flex-shrink-0" style="width:4rem;text-align:right">%s</span>`, FormatBytes(f.SizeBytes))
+		fmt.Fprintf(b, `<span class="text-xs text-neutral-500 flex-shrink-0" style="width:4rem;text-align:right">%s</span>`, format.Bytes(f.SizeBytes))
 		dlID := FilenameToDlID(f.Filename)
 		dlKey := m.RepoID + "/" + f.Filename
 		spanAttr := fmt.Sprintf(`id="%s" data-repo="%s" data-file="%s" style="flex-shrink:0;min-width:5.5rem;display:inline-flex;align-items:center;justify-content:center"`,

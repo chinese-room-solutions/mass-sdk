@@ -29,9 +29,10 @@ func Layout(title, body, theme string) string {
 	<link rel="icon" href="data:,"/>
 	<style>%s</style>
 	<script>%s</script>
+	<script>%s</script>
 </head>
 <body class="%s min-h-screen">
 	%s
 </body>
-</html>`, themeClass, title, ThemeCSS, StateJS, themeClass, body)
+</html>`, themeClass, title, ThemeCSS, StateJS, AlertJS, themeClass, body)
 }

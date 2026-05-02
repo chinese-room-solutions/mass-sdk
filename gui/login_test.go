@@ -2,13 +2,13 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	mass "github.com/chinese-room-solutions/mass-client-go"
 	"github.com/chinese-room-solutions/mass-sdk/auth"
 	"github.com/stretchr/testify/require"
 )
@@ -19,6 +19,23 @@ func newTestStore(t *testing.T) *auth.Store {
 	require.NoError(t, err)
 	return s
 }
+
+// liveState is a tiny in-memory client stand-in for tests: holds an endpoint
+// + token, exposes the func adapters [middleware.go] / [login.go] expect.
+type liveState struct {
+	endpoint string
+	token    string
+}
+
+func (s *liveState) getEndpoint() string        { return s.endpoint }
+func (s *liveState) setEndpoint(url string)     { s.endpoint = url }
+func (s *liveState) setToken(t string)          { s.token = t }
+func (s *liveState) getToken() string           { return s.token }
+
+// stubValidator returns a Validator that calls validateFn.
+type stubValidator struct{ fn func() error }
+
+func (s stubValidator) Validate(_ context.Context) error { return s.fn() }
 
 func TestRenderLoginPage_ContainsFields(t *testing.T) {
 	page := RenderLoginPage(LoginPageData{
@@ -50,12 +67,14 @@ func TestExtractBody(t *testing.T) {
 
 func TestRequireAuth_NoTokenRedirects(t *testing.T) {
 	store := newTestStore(t)
-	client := &mass.Client{}
-	client.SetEndpoint("http://localhost:3455")
+	state := &liveState{endpoint: "http://localhost:3455"}
 
 	called := false
-	mw := RequireAuth(RequireAuthConfig{Client: client, Store: store},
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+	mw := RequireAuth(RequireAuthConfig{
+		Endpoint: state.getEndpoint,
+		SetToken: state.setToken,
+		Store:    store,
+	}, http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { called = true }))
 
 	rr := httptest.NewRecorder()
 	mw.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/protected", nil))
@@ -68,28 +87,32 @@ func TestRequireAuth_NoTokenRedirects(t *testing.T) {
 
 func TestRequireAuth_TokenInStorePassesThrough(t *testing.T) {
 	store := newTestStore(t)
-	client := &mass.Client{}
-	client.SetEndpoint("http://localhost:3455")
+	state := &liveState{endpoint: "http://localhost:3455"}
 	require.NoError(t, store.Set("http://localhost:3455", "tokA"))
 
 	called := false
-	mw := RequireAuth(RequireAuthConfig{Client: client, Store: store},
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+	mw := RequireAuth(RequireAuthConfig{
+		Endpoint: state.getEndpoint,
+		SetToken: state.setToken,
+		Store:    store,
+	}, http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { called = true }))
 
 	rr := httptest.NewRecorder()
 	mw.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/protected", nil))
 
 	require.True(t, called)
-	require.Equal(t, "tokA", client.Token(), "middleware must rehydrate client token from store")
+	require.Equal(t, "tokA", state.getToken(), "middleware must rehydrate client token from store")
 }
 
 func TestRequireAuth_PublicPathsBypass(t *testing.T) {
 	store := newTestStore(t)
-	client := &mass.Client{}
+	state := &liveState{}
 
 	called := false
-	mw := RequireAuth(RequireAuthConfig{Client: client, Store: store},
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+	mw := RequireAuth(RequireAuthConfig{
+		Endpoint: state.getEndpoint,
+		Store:    store,
+	}, http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { called = true }))
 
 	for _, p := range []string{LoginPath, "/__focus", "/__anything"} {
 		called = false
@@ -100,26 +123,24 @@ func TestRequireAuth_PublicPathsBypass(t *testing.T) {
 }
 
 func TestLoginHandler_PostSuccessRedirects(t *testing.T) {
-	// Stand up a fake MASS that accepts ListModels with the right token.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/mass.v1.Mass/ListModels", r.URL.Path)
-		require.Equal(t, "Bearer good-token", r.Header.Get("Authorization"))
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("{}"))
-	}))
-	defer srv.Close()
-
 	store := newTestStore(t)
-	client := &mass.Client{HTTPClient: srv.Client()}
+	state := &liveState{}
 
 	h := LoginHandler(LoginConfig{
-		Client:        client,
+		Endpoint:    state.getEndpoint,
+		SetEndpoint: state.setEndpoint,
+		SetToken:    state.setToken,
+		NewValidator: func(endpoint, token string) ValidatorInterface {
+			require.Equal(t, "http://example.test", endpoint)
+			require.Equal(t, "good-token", token)
+			return stubValidator{fn: func() error { return nil }}
+		},
 		Store:         store,
 		DefaultReturn: "/home",
 		AppTitle:      "Test",
 	})
 
-	body := strings.NewReader(`{"mass_endpoint":"` + srv.URL + `","mass_token":"good-token","mass_return":"/home"}`)
+	body := strings.NewReader(`{"mass_endpoint":"http://example.test","mass_token":"good-token","mass_return":"/home"}`)
 	req := httptest.NewRequest(http.MethodPost, LoginPath, body).WithContext(context.Background())
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -128,34 +149,36 @@ func TestLoginHandler_PostSuccessRedirects(t *testing.T) {
 	require.Contains(t, rr.Body.String(), "datastar-execute-script")
 	require.Contains(t, rr.Body.String(), "/home")
 
-	// Token should now be persisted in the store and live on the client.
-	tok, ok := store.Get(srv.URL)
+	tok, ok := store.Get("http://example.test")
 	require.True(t, ok)
 	require.Equal(t, "good-token", tok)
-	require.Equal(t, "good-token", client.Token())
+	require.Equal(t, "good-token", state.getToken())
+	require.Equal(t, "http://example.test", state.getEndpoint())
 }
 
 func TestLoginHandler_PostFailureRendersError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
-	}))
-	defer srv.Close()
-
 	store := newTestStore(t)
-	client := &mass.Client{HTTPClient: srv.Client()}
+	state := &liveState{}
 
 	h := LoginHandler(LoginConfig{
-		Client: client, Store: store, DefaultReturn: "/", AppTitle: "Test",
+		Endpoint:    state.getEndpoint,
+		SetEndpoint: state.setEndpoint,
+		SetToken:    state.setToken,
+		NewValidator: func(_, _ string) ValidatorInterface {
+			return stubValidator{fn: func() error { return errors.New("unauthorized") }}
+		},
+		Store:         store,
+		DefaultReturn: "/",
+		AppTitle:      "Test",
 	})
 
-	body := strings.NewReader(`{"mass_endpoint":"` + srv.URL + `","mass_token":"bad","mass_return":"/"}`)
+	body := strings.NewReader(`{"mass_endpoint":"http://example.test","mass_token":"bad","mass_return":"/"}`)
 	req := httptest.NewRequest(http.MethodPost, LoginPath, body)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
 	require.Contains(t, rr.Body.String(), "datastar-patch-elements")
 	require.Contains(t, rr.Body.String(), "Could not connect")
-	_, ok := store.Get(srv.URL)
+	_, ok := store.Get("http://example.test")
 	require.False(t, ok, "token must not be persisted on failure")
 }

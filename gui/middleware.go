@@ -1,30 +1,51 @@
 package gui
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
 
-	mass "github.com/chinese-room-solutions/mass-client-go"
 	"github.com/chinese-room-solutions/mass-sdk/auth"
 )
 
-// RequireAuthConfig configures the auth gate.
-type RequireAuthConfig struct {
-	Client *mass.Client
-	Store  *auth.Store
+// ValidatorInterface is the minimal interface the GUI auth gate needs from
+// whatever client an app uses to talk to its backend. Implementations call
+// a known auth-protected endpoint and return nil iff the configured token
+// is accepted.
+type ValidatorInterface interface {
+	Validate(ctx context.Context) error
 }
 
-// RequireAuth gates next behind a stored token for the client's current
-// endpoint, redirecting to the login page otherwise. The login path and
-// /__* routes bypass the gate.
+// EndpointFunc returns the current endpoint URL the app's client targets.
+// Used as the auth-store key — tokens are scoped per endpoint.
+type EndpointFunc func() string
+
+// SetTokenFunc updates the live client's token. Pass empty string to clear.
+type SetTokenFunc func(token string)
+
+// RequireAuthConfig configures the auth gate.
+type RequireAuthConfig struct {
+	// Endpoint returns the live endpoint URL; used as the auth-store key.
+	Endpoint EndpointFunc
+	// SetToken pushes the stored token into the live client. Optional —
+	// if nil, callers are expected to seed the token themselves at startup
+	// and the middleware only enforces presence.
+	SetToken SetTokenFunc
+	// Store holds endpoint→token mappings. Required.
+	Store *auth.Store
+}
+
+// RequireAuth gates next behind a stored token for the current endpoint,
+// redirecting to the login page otherwise. The login path and /__* routes
+// bypass the gate.
 //
-// The check is local (do we have a token?). MASS rejects stale tokens at
-// the API layer; on 401, app handlers should call client.Validate() and
-// redirect to LoginPath themselves.
+// The check is local (do we have a token?). The backend rejects stale tokens
+// at the API layer; on 401, app handlers should call Validator.Validate()
+// and redirect to LoginPath themselves.
 func RequireAuth(cfg RequireAuthConfig, next http.Handler) http.Handler {
-	if cfg.Client == nil {
-		panic("gui.RequireAuth: Client is required")
+	if cfg.Endpoint == nil {
+		panic("gui.RequireAuth: Endpoint is required")
 	}
 	if cfg.Store == nil {
 		panic("gui.RequireAuth: Store is required")
@@ -35,18 +56,18 @@ func RequireAuth(cfg RequireAuthConfig, next http.Handler) http.Handler {
 			return
 		}
 
-		endpoint := cfg.Client.Endpoint()
+		endpoint := cfg.Endpoint()
 		token, ok := cfg.Store.Get(endpoint)
 		if !ok || token == "" {
 			redirectToLogin(w, r)
 			return
 		}
 
-		// Make sure the live client is in sync with the store. This handles
-		// the first request after process startup where main() built the
-		// client without a token.
-		if cfg.Client.Token() != token {
-			cfg.Client.SetToken(token)
+		// Make sure the live client is in sync with the store. Handles the
+		// first request after process startup where main() built the client
+		// without a token.
+		if cfg.SetToken != nil {
+			cfg.SetToken(token)
 		}
 
 		next.ServeHTTP(w, r)

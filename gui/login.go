@@ -1,6 +1,10 @@
-// Package gui provides shared HTTP machinery for MASS app GUIs: a login
-// page that captures and validates an endpoint+token (persisted via auth),
-// and a middleware that gates app routes behind a valid stored token.
+// Package gui provides shared HTTP machinery for app GUIs: a login page
+// that captures and validates an endpoint+token (persisted via auth), and
+// a middleware that gates app routes behind a valid stored token.
+//
+// The login flow is client-agnostic: callers supply small functions /
+// interfaces (SetEndpoint, SetToken, ValidatorFactory) so the package
+// works against any HTTP-shaped backend.
 package gui
 
 import (
@@ -14,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	mass "github.com/chinese-room-solutions/mass-client-go"
 	"github.com/chinese-room-solutions/mass-sdk/auth"
 	"github.com/chinese-room-solutions/mass-sdk/uikit"
 )
@@ -33,11 +36,30 @@ const (
 	ThemeLight Theme = "light"
 )
 
+// SetEndpointFunc updates the live client's endpoint.
+type SetEndpointFunc func(endpoint string)
+
+// ValidatorFactory builds a one-shot Validator pre-configured with the
+// supplied endpoint+token. Used by the login POST handler to probe the
+// candidate credentials without mutating the live client until success.
+//
+// Returning the same client wrapped in a temporary view is fine; the
+// factory is called exactly once per submit.
+type ValidatorFactory func(endpoint, token string) ValidatorInterface
+
 // LoginConfig configures the login handler.
 type LoginConfig struct {
-	// Client is the live mass.Client to update on successful login.
-	Client *mass.Client
-	// Store persists the token keyed by endpoint URL.
+	// Endpoint returns the current endpoint URL (pre-fills the form).
+	Endpoint EndpointFunc
+	// SetEndpoint pushes the validated endpoint into the live client.
+	// Required.
+	SetEndpoint SetEndpointFunc
+	// SetToken pushes the validated token into the live client. Required.
+	SetToken SetTokenFunc
+	// NewValidator builds a probe Validator for one (endpoint, token) pair.
+	// Required.
+	NewValidator ValidatorFactory
+	// Store persists the token keyed by endpoint URL. Required.
 	Store *auth.Store
 	// DefaultReturn is the post-login URL when no ?return= is provided.
 	DefaultReturn string
@@ -52,8 +74,14 @@ type LoginConfig struct {
 // LoginHandler returns an http.HandlerFunc serving GET (render the form) and
 // POST (Datastar SSE: validate + persist + redirect or re-render with error).
 func LoginHandler(cfg LoginConfig) http.HandlerFunc {
-	if cfg.Client == nil {
-		panic("gui.LoginHandler: Client is required")
+	if cfg.Endpoint == nil {
+		panic("gui.LoginHandler: Endpoint is required")
+	}
+	if cfg.SetEndpoint == nil || cfg.SetToken == nil {
+		panic("gui.LoginHandler: SetEndpoint and SetToken are required")
+	}
+	if cfg.NewValidator == nil {
+		panic("gui.LoginHandler: NewValidator is required")
 	}
 	if cfg.Store == nil {
 		panic("gui.LoginHandler: Store is required")
@@ -90,7 +118,7 @@ func handleLoginGet(w http.ResponseWriter, r *http.Request, cfg LoginConfig) {
 	}
 	page := RenderLoginPage(LoginPageData{
 		AppTitle:    cfg.AppTitle,
-		EndpointURL: cfg.Client.Endpoint(),
+		EndpointURL: cfg.Endpoint(),
 		ReturnURL:   ret,
 		Theme:       cfg.Theme,
 	})
@@ -129,23 +157,16 @@ func handleLoginPost(w http.ResponseWriter, r *http.Request, cfg LoginConfig) {
 
 	if signals.Endpoint == "" || signals.Token == "" {
 		writeLoginError(w, flush, cfg, signals.Endpoint, signals.ReturnURL,
-			"Both MASS URL and token are required.")
+			"Both URL and token are required.")
 		return
 	}
 	if _, err := url.Parse(signals.Endpoint); err != nil {
 		writeLoginError(w, flush, cfg, signals.Endpoint, signals.ReturnURL,
-			"Invalid MASS URL: "+err.Error())
+			"Invalid URL: "+err.Error())
 		return
 	}
 
-	// Validate against MASS using a temp client so we don't pollute the live
-	// client until success.
-	probe := &mass.Client{
-		Source:     cfg.Client.Source,
-		HTTPClient: cfg.Client.HTTPClient,
-	}
-	probe.SetEndpoint(signals.Endpoint)
-	probe.SetToken(signals.Token)
+	probe := cfg.NewValidator(signals.Endpoint, signals.Token)
 
 	ctx, cancel := context.WithTimeout(r.Context(), cfg.ValidateTimeout)
 	defer cancel()
@@ -160,8 +181,8 @@ func handleLoginPost(w http.ResponseWriter, r *http.Request, cfg LoginConfig) {
 			"Failed to save token: "+err.Error())
 		return
 	}
-	cfg.Client.SetEndpoint(signals.Endpoint)
-	cfg.Client.SetToken(signals.Token)
+	cfg.SetEndpoint(signals.Endpoint)
+	cfg.SetToken(signals.Token)
 
 	// Datastar @location redirect.
 	writeSSE(w, "datastar-execute-script",
@@ -223,7 +244,7 @@ func extractBody(fullPage string) string {
 // LoginPageData drives RenderLoginPage.
 type LoginPageData struct {
 	AppTitle    string
-	EndpointURL string // pre-fills the MASS URL field
+	EndpointURL string // pre-fills the URL field
 	ReturnURL   string // hidden field carried back on submit
 	ErrorMsg    string // optional error banner
 	Theme       Theme
@@ -251,11 +272,11 @@ func RenderLoginPage(d LoginPageData) string {
 	body := fmt.Sprintf(`
 <div class="min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-md p-8 rounded-lg" style="background: var(--mass-bg-panel); border: 1px solid var(--mass-border);">
-    <h1 class="text-xl mb-1" style="color: var(--mass-text);">Connect to MASS</h1>
-    <p class="text-sm mb-6" style="color: var(--mass-text-muted);">%s needs a MASS endpoint and auth token.</p>
+    <h1 class="text-xl mb-1" style="color: var(--mass-text);">Connect</h1>
+    <p class="text-sm mb-6" style="color: var(--mass-text-muted);">%s needs an endpoint URL and auth token.</p>
     %s
     <div data-signals="{mass_endpoint:'%s', mass_token:'', mass_return:'%s'}">
-      <sl-input label="MASS URL" data-bind="mass_endpoint" autocomplete="off" class="mb-4"></sl-input>
+      <sl-input label="URL" data-bind="mass_endpoint" autocomplete="off" class="mb-4"></sl-input>
       <sl-input label="Auth token" type="password" data-bind="mass_token" autocomplete="off" toggle-password class="mb-6"></sl-input>
       <sl-button variant="primary" class="w-full" data-on-click="@post('%s')">Sign in</sl-button>
     </div>

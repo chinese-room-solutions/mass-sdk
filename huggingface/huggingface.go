@@ -262,6 +262,14 @@ func FindMmproj(ctx context.Context, repoID string) (string, error) {
 	return "", nil
 }
 
+// ListFiles returns every file in the given HuggingFace repo's tree.
+// When exts is non-empty, only files whose name ends with one of the given
+// extensions are returned. Used by gateways planning multi-file model
+// installs (e.g. companion mmproj alongside a chat GGUF).
+func ListFiles(ctx context.Context, repoID string, exts []string) ([]GGUFFile, error) {
+	return fetchMatchingFiles(ctx, repoID, exts)
+}
+
 // SanitizeRepoID converts a repo ID to a directory path.
 // The result preserves the "/" separator so downloads use a
 // two-level directory structure: {publisher}/{repo}.

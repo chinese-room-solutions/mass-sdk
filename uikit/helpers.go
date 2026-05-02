@@ -25,6 +25,12 @@ var ThemeCSS string
 //go:embed state.js
 var StateJS string
 
+// AlertJS contains the massAlert helper — a Shoelace-styled drop-in
+// replacement for window.alert. Provides window.massAlert(msg, opts).
+//
+//go:embed alert.js
+var AlertJS string
+
 // ToInt32 converts a JSON value (string or float64) to int32.
 // Datastar sends sl-input type="number" values as JSON strings,
 // so this helper handles both representations.
@@ -40,32 +46,6 @@ func ToInt32(v any) int32 {
 	}
 }
 
-// FormatBytes formats a byte count as a human-readable string.
-func FormatBytes(b int64) string {
-	switch {
-	case b >= 1<<30:
-		return fmt.Sprintf("%.1f GB", float64(b)/float64(1<<30))
-	case b >= 1<<20:
-		return fmt.Sprintf("%.1f MB", float64(b)/float64(1<<20))
-	case b >= 1<<10:
-		return fmt.Sprintf("%.1f KB", float64(b)/float64(1<<10))
-	default:
-		return fmt.Sprintf("%d B", b)
-	}
-}
-
-// FormatCount formats a number with K/M suffixes.
-func FormatCount(n int64) string {
-	switch {
-	case n >= 1_000_000:
-		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
-	case n >= 1_000:
-		return fmt.Sprintf("%.1fk", float64(n)/1_000)
-	default:
-		return fmt.Sprintf("%d", n)
-	}
-}
-
 // FilenameToDlID converts a filename to a stable HTML element ID for download progress.
 func FilenameToDlID(filename string) string {
 	var b strings.Builder
@@ -78,14 +58,6 @@ func FilenameToDlID(filename string) string {
 		}
 	}
 	return b.String()
-}
-
-// Truncate shortens a string to maxLen, appending "..." if truncated.
-func Truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
 }
 
 // RenderAlert returns a Shoelace alert HTML fragment with a stable ID.
@@ -111,12 +83,6 @@ func RenderConfigStatus(msg string, isError bool) string {
 		variant = "danger"
 	}
 	return RenderAlert("pe-config-status", msg, variant, 3000)
-}
-
-// JSONEscape escapes a string for safe embedding inside a JSON string value.
-func JSONEscape(s string) string {
-	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`, "\t", `\t`)
-	return r.Replace(s)
 }
 
 // MergeSignalsIntoConfig overrides a ModelConfigData with values from
