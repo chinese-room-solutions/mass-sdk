@@ -32,7 +32,7 @@
     if (dialog) return;
     dialog = document.createElement("sl-dialog");
     dialog.id = DIALOG_ID;
-    dialog.className = "mass-dialog-centered-title " + currentThemeClass();
+    dialog.className = "mass-dialog " + currentThemeClass();
     // z-index bump: sit above other open sl-dialogs (default --sl-z-index-dialog=800).
     // Body bg pinned to --mass-bg-panel so the panel reads correctly even when
     // Shoelace's neutral scale isn't fully overridden.
@@ -40,19 +40,16 @@
       "--width:440px;" +
       "--sl-z-index-dialog:1000;" +
       "--sl-panel-background-color:var(--mass-bg-panel);" +
-      "--sl-panel-border-color:var(--mass-border);" +
-      "--header-spacing:var(--sl-spacing-small) var(--sl-spacing-large);" +
-      "--body-spacing:var(--sl-spacing-x-small) var(--sl-spacing-large) var(--sl-spacing-small);" +
-      "--footer-spacing:var(--sl-spacing-x-small) var(--sl-spacing-large);";
+      "--sl-panel-border-color:var(--mass-border);";
 
     msgEl = document.createElement("p");
-    msgEl.className = "text-sm text-center";
+    msgEl.className = "text-sm";
     msgEl.style.cssText = "color:var(--mass-text);white-space:pre-wrap;word-break:break-word";
     dialog.appendChild(msgEl);
 
     var footer = document.createElement("div");
     footer.setAttribute("slot", "footer");
-    footer.className = "flex justify-center";
+    footer.className = "flex justify-end";
     okBtn = document.createElement("sl-button");
     okBtn.setAttribute("variant", "primary");
     okBtn.setAttribute("size", "small");

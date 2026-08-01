@@ -2,51 +2,110 @@
 /* Shared between MASS and standalone modules. Imported by MASS's Tailwind     */
 /* build and embedded by standalone module servers.                             */
 
+/* ── Cream (built-in light) ──────────────────────────────────────────── */
+/* Ivory panels on a cream canvas, warm espresso ink, and dusty
+   (desaturated) semantic hues — soft, never gray. Everything holds
+   WCAG AA (>=4.5:1) on the surface it appears on. */
 html.sl-theme-light {
-  --mass-bg-base:    #f7f5f2;
-  --mass-bg-panel:   #fdfcfb;
-  --mass-bg-hover:   #efecea;
-  --mass-bg-active:  #f0eeff;
-  --mass-border:     #e0dcd8;
-  --mass-text:       #111827;
-  --mass-text-muted: #4b5563;
-  --mass-text-faint: #4b5563;
+  color-scheme: light;
+  --mass-bg-base:    #f5efe2;
+  --mass-bg-panel:   #fdfaf1;
+  --mass-bg-hover:   #eae2cf;
+  --mass-bg-active:  #e2e8f2;
+  --mass-border:     #d3c6ad;
+  --mass-scrollbar-thumb: #7d7159; /* rest 4.2:1; WebKit pressed(darkened) 13:1 */
+  --mass-text:       #453d31;
+  --mass-text-muted: #6d6252;
+  --mass-text-faint: #746952;
+  /* Each semantic role has three companions, used consistently across the family:
+       --mass-<role>        text/icon colour (tuned for contrast on the page bg)
+       --mass-<role>-soft   translucent tint for chip/callout fills
+       --mass-<role>-fill   solid button background, deep enough for white label
+                            text (the text colour is often too light for that)
+     Filled primary-style buttons all derive their hover the same way:
+     color-mix(... 88%, #000) — see the sl-button rules below. The hues run
+     dusty here (denim, sage, caramel, terracotta) to stay gentle on cream. */
+  --mass-accent:       #46688f;
+  --mass-accent-soft:  color-mix(in srgb, var(--mass-accent) 14%, transparent);
+  --mass-accent-fill:  #52739c;
+  --mass-success:      #55752c;
+  --mass-success-soft: color-mix(in srgb, #8fbf4a 22%, transparent);
+  --mass-success-fill: #567631;
+  --mass-warning:      #8f6212;
+  --mass-warning-soft: color-mix(in srgb, #d19125 18%, transparent);
+  --mass-warning-fill: #96650f;
+  --mass-danger:       #ab4a38;
+  --mass-danger-soft:  color-mix(in srgb, #cd6a52 16%, transparent);
+  --mass-danger-fill:  #ab4a38;
+  /* Label colour on -fill backgrounds (filled buttons, solid badges):
+     warm off-white instead of pure white. */
+  --mass-fill-text: #faf8f6;
   /* Avatar reuses the page background token (one shade off from the
      panel it sits on) so the chip reads as a distinct surface without
      introducing a new palette entry. */
   --mass-avatar-bg:   var(--mass-bg-base);
   --mass-avatar-text: var(--mass-text);
-  --mass-badge-bg:   #d4d4d8;
-  --mass-badge-text: #333338;
-  --mass-badge-alt-bg:   #ecfdf5;
-  --mass-badge-alt-text: #065f46;
-  --mass-fb-selected:#bfdbfe;
-  --mass-log-time:   #9ca3af;
-  --mass-log-msg:    #1f2937;
-  --mass-log-key:    #0891b2;
-  --mass-log-val:    #4b5563;
-  --mass-log-inf:    #16a34a;
-  --mass-log-dbg:    #9ca3af;
-  --mass-log-wrn:    #d97706;
-  --mass-log-err:    #dc2626;
+  --mass-badge-bg:   #e8ddc6;
+  --mass-badge-text: #574c38;
+  --mass-badge-alt-bg:   #e3eed2;
+  --mass-badge-alt-text: #3f6320;
+  --mass-fb-selected:#cfdff0;
+  --mass-log-time:   #776a57;
+  --mass-log-msg:    #453d31;
+  --mass-log-key:    #22707a;
+  --mass-log-val:    #6d6252;
+  --mass-log-inf:    #38773a;
+  --mass-log-dbg:    #776a57;
+  --mass-log-wrn:    #8f6212;
+  --mass-log-err:    #b3453a;
+
+  /* Shoelace's default neutral scale is a cool gray — it paints default-button
+     borders, dividers, icon-buttons, switches — and reads as "gray office"
+     against cream. Re-ramp it warm (sand/taupe), anchored to the tokens above. */
+  --sl-color-neutral-0:   #fdfaf1;
+  --sl-color-neutral-50:  #f8f2e6;
+  --sl-color-neutral-100: #f0e9d8;
+  --sl-color-neutral-200: #e5dcc6;
+  --sl-color-neutral-300: #d3c6ad;
+  --sl-color-neutral-400: #a2957d;
+  --sl-color-neutral-500: #877b65;
+  --sl-color-neutral-600: #6d6252;
+  --sl-color-neutral-700: #574e3f;
+  --sl-color-neutral-800: #453d31;
+  --sl-color-neutral-900: #362f25;
+  --sl-color-neutral-950: #26211a;
+  --sl-input-border-color: #d3c6ad;
 }
 
+/* ── Carbon (built-in dark, and the fallback for unknown themes) ─────── */
 html.sl-theme-dark,
 html:not(.sl-theme-light) {
+  color-scheme: dark;
   --mass-bg-base:    #171616;
   --mass-bg-panel:   #1e1d1d;
   --mass-bg-hover:   #2e2d2d;
   --mass-bg-active:  rgba(64,64,64,0.6);
   --mass-border:     #3d3d3d;
+  --mass-scrollbar-thumb: #9e9e9e; /* bright: WebKit pressed(darkened -0.33) must stay ≥2:1 on #171616 */
   --mass-text:       #d4d4d8;
   --mass-text-muted: #9a9a9a;
   --mass-text-faint: #707070;
-
-  /* Override Shoelace neutral scale for better contrast on dark bg */
-  --sl-color-neutral-400: #9a9a9a;
-  --sl-color-neutral-500: #808080;
-  --sl-color-neutral-600: #636363;
-  --sl-input-border-color: #3d3d3d;
+  /* Same three-companion set as light (see that block). On dark the bright brand
+     shades read well as text, so -soft tints derive straight from them; -fill is a
+     shade deep enough that white button text stays legible. */
+  --mass-accent:       #7AA2DB;
+  --mass-accent-soft:  color-mix(in srgb, var(--mass-accent) 22%, transparent);
+  --mass-accent-fill:  #4472ae;
+  --mass-success:      #9ae35c;
+  --mass-success-soft: color-mix(in srgb, var(--mass-success) 14%, transparent);
+  --mass-success-fill: #537d10;
+  --mass-warning:      #fbbf24;
+  --mass-warning-soft: color-mix(in srgb, var(--mass-warning) 14%, transparent);
+  --mass-warning-fill: #ac5c09;
+  --mass-danger:       #f87171;
+  --mass-danger-soft:  color-mix(in srgb, var(--mass-danger) 14%, transparent);
+  --mass-danger-fill:  #cd3d2f;
+  --mass-fill-text: #faf8f6;
   --mass-avatar-bg:   var(--mass-bg-base);
   --mass-avatar-text: var(--mass-text);
   --mass-badge-bg:   #52525b;
@@ -54,7 +113,7 @@ html:not(.sl-theme-light) {
   --mass-badge-alt-bg:   #1a2e1a;
   --mass-badge-alt-text: #5bd896;
   --mass-fb-selected:#1e3a5f;
-  --mass-log-time:   #6b7280;
+  --mass-log-time:   #798191;
   --mass-log-msg:    #e5e7eb;
   --mass-log-key:    #67e8f9;
   --mass-log-val:    #9ca3af;
@@ -62,6 +121,14 @@ html:not(.sl-theme-light) {
   --mass-log-dbg:    #9ca3af;
   --mass-log-wrn:    #fde68a;
   --mass-log-err:    #fca5a5;
+
+  /* Shoelace neutral overrides: better contrast on the dark bg, and a warm
+     off-white neutral-0 instead of pure white. */
+  --sl-color-neutral-0:   #faf8f6;
+  --sl-color-neutral-400: #9a9a9a;
+  --sl-color-neutral-500: #808080;
+  --sl-color-neutral-600: #636363;
+  --sl-input-border-color: #3d3d3d;
 }
 
 /* ── Brand colors ────────────────────────────────────────────────────── */
@@ -114,26 +181,77 @@ html:not(.sl-theme-light) {
 
 /* ── Base component styles ───────────────────────────────────────────── */
 
-/* Primary buttons: brand blue */
+/* Primary buttons: the soft-blue accent fill (same family as accent text, a shade
+   deeper so white label text stays legible). --mass-glow-primary lets a theme add
+   a neon halo (defaults to none). */
 sl-button[variant="primary"]::part(base) {
-  background-color: var(--mass-blue) !important;
-  border-color: var(--sl-color-primary-500) !important;
-  color: #faf8f6;
+  background-color: var(--mass-accent-fill) !important;
+  border-color: var(--mass-accent-fill) !important;
+  color: var(--mass-fill-text);
+  box-shadow: var(--mass-glow-primary, none);
 }
 sl-button[variant="primary"]:hover::part(base) {
-  background-color: var(--sl-color-primary-500) !important;
-  border-color: var(--sl-color-primary-600) !important;
+  background-color: color-mix(in srgb, var(--mass-accent-fill) 88%, #000) !important;
+  border-color: color-mix(in srgb, var(--mass-accent-fill) 88%, #000) !important;
 }
 
-/* Danger buttons: brand red */
+/* Danger buttons: the danger fill (same fill+hover pattern as primary). */
 sl-button[variant="danger"]::part(base) {
-  background-color: var(--mass-red) !important;
-  border-color: #da4444 !important;
-  color: #faf8f6;
+  background-color: var(--mass-danger-fill) !important;
+  border-color: var(--mass-danger-fill) !important;
+  color: var(--mass-fill-text);
+}
+sl-button[variant="danger"]::part(base) {
+  box-shadow: var(--mass-glow-danger, none);
 }
 sl-button[variant="danger"]:hover::part(base) {
-  background-color: #da4444 !important;
-  border-color: #c53a3a !important;
+  background-color: color-mix(in srgb, var(--mass-danger-fill) 88%, #000) !important;
+  border-color: color-mix(in srgb, var(--mass-danger-fill) 88%, #000) !important;
+}
+
+/* Success buttons: the success fill (same fill+hover pattern as primary). */
+sl-button[variant="success"]::part(base) {
+  background-color: var(--mass-success-fill) !important;
+  border-color: var(--mass-success-fill) !important;
+  color: var(--mass-fill-text);
+}
+sl-button[variant="success"]::part(base) {
+  box-shadow: var(--mass-glow-success, none);
+}
+sl-button[variant="success"]:hover::part(base) {
+  background-color: color-mix(in srgb, var(--mass-success-fill) 88%, #000) !important;
+  border-color: color-mix(in srgb, var(--mass-success-fill) 88%, #000) !important;
+}
+
+/* Text buttons and primary badges follow the theme accent (like the filled
+   primary buttons above) instead of the fixed brand-blue primary scale. */
+sl-button[variant="text"]::part(base),
+sl-button[variant="text"]::part(label) {
+  color: var(--mass-accent) !important;
+}
+sl-button[variant="text"]:hover::part(base),
+sl-button[variant="text"]:hover::part(label) {
+  color: color-mix(in srgb, var(--mass-accent) 75%, var(--mass-text)) !important;
+}
+sl-badge[variant="primary"]::part(base) {
+  background-color: var(--mass-accent-fill) !important;
+  border-color: var(--mass-accent-fill) !important;
+  color: var(--mass-fill-text) !important;
+}
+sl-badge[variant="success"]::part(base) {
+  background-color: var(--mass-success-fill) !important;
+  border-color: var(--mass-success-fill) !important;
+  color: var(--mass-fill-text) !important;
+}
+sl-badge[variant="warning"]::part(base) {
+  background-color: var(--mass-warning-fill) !important;
+  border-color: var(--mass-warning-fill) !important;
+  color: var(--mass-fill-text) !important;
+}
+sl-badge[variant="danger"]::part(base) {
+  background-color: var(--mass-danger-fill) !important;
+  border-color: var(--mass-danger-fill) !important;
+  color: var(--mass-fill-text) !important;
 }
 
 /* Default buttons: deepest background, matching input field style */
@@ -146,13 +264,22 @@ sl-button[variant="default"]:hover::part(base) {
   background-color: var(--mass-bg-hover) !important;
 }
 
-/* Warm off-white instead of pure white */
-html.sl-theme-dark,
-html:not(.sl-theme-light) {
-  --sl-color-neutral-0: #faf8f6;
+/* Menus (dropdown panels): themed surface. Both Shoelace theme stylesheets are
+   linked, and light.css's :root tokens would otherwise paint the panel white
+   on dark themes. */
+sl-menu {
+  background-color: var(--mass-bg-panel) !important;
+  border: 1px solid var(--mass-border) !important;
+  box-shadow: var(--mass-glow-panel, none);
 }
-html.sl-theme-light {
-  --sl-color-neutral-0: #faf8f6;
+sl-menu-item::part(base) {
+  color: var(--mass-text) !important;
+}
+sl-menu-item::part(base):hover {
+  background-color: var(--mass-bg-hover) !important;
+}
+sl-menu-item::part(checked-icon) {
+  color: var(--mass-accent) !important;
 }
 
 /* Select dropdown popup: matches the input field it drops from */
@@ -176,9 +303,39 @@ sl-textarea::part(base) {
   border-color: var(--mass-border) !important;
   color: var(--mass-text) !important;
 }
+/* Focus state: keep the border accent but replace Shoelace's default
+   "focus ring" box-shadow which paints a wide greenish halo outside
+   the element. --mass-glow-focus lets a theme add its own halo
+   (defaults to none); the border-color change carries the affordance. */
+sl-input:focus-within::part(base),
+sl-select:focus-within::part(combobox),
+sl-textarea:focus-within::part(base) {
+  box-shadow: var(--mass-glow-focus, none) !important;
+  border-color: var(--sl-color-primary-500, #3b82f6) !important;
+}
 sl-input::part(input),
 sl-select::part(display-input),
 sl-textarea::part(textarea) { color: var(--mass-text) !important; }
+
+/* Single-line fields on Linux: WebKitGTK resolves system-ui through GTK to
+   Noto Sans, whose ascent-heavy hhea metrics place the input baseline above
+   center — engines derive field-text position from font metrics, so no layout
+   property corrects it (line-height is ignored; flex-centering leaves the
+   skew). Re-declare the local font with normalized vertical metrics and use it
+   for field text only; absent the local font the alias resolves to nothing and
+   the regular stack applies. Scoped by data-os so other platforms' field font
+   never shifts family. */
+@font-face {
+  font-family: "mass-field-ui";
+  src: local("Noto Sans");
+  ascent-override: 77%;
+  descent-override: 23%;
+  line-gap-override: 0%;
+}
+html[data-os="linux"] sl-input::part(input),
+html[data-os="linux"] sl-select::part(display-input) {
+  font-family: "mass-field-ui", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
 
 /* Form labels */
 sl-input::part(form-control-label),
@@ -186,7 +343,40 @@ sl-select::part(form-control-label),
 sl-textarea::part(form-control-label) { color: var(--mass-text-muted) !important; }
 
 /* ── Base body styles ────────────────────────────────────────────────── */
+/* Paint the root canvas, not just the body: the body is held visibility:hidden
+   until Shoelace upgrades (see Layout's FOUC guard), so during load only the
+   <html> background shows. Without this the browser/WebView2 default white
+   flashes for the whole upgrade window — a blinding flash on a dark theme. */
+html { background: var(--mass-bg-base); }
 body { background: var(--mass-bg-base) !important; color: var(--mass-text) !important; }
+
+/* ── Shoelace dialog panel ───────────────────────────────────────────── */
+/* Pin the dialog panel to MASS's base surface so any iframe-mounted     */
+/* gateway content rendered with theme.css's body bg matches edge-to-    */
+/* edge. Without this, Shoelace's default --sl-panel-background-color    */
+/* paints a slightly lighter gray and the iframe seam shows.             */
+sl-dialog::part(panel) {
+  background-color: var(--mass-bg-base);
+  box-shadow: var(--mass-glow-panel, var(--sl-shadow-x-large));
+}
+
+/* Headings can carry a theme-supplied halo (defaults to none). */
+h1, h2, h3 { text-shadow: var(--mass-glow-heading, none); }
+
+/* The active tab of a Shoelace tab group carries the theme's tab halo, like
+   MASS's own tab buttons (defaults to none). */
+sl-tab[active]::part(base) { text-shadow: var(--mass-glow-tab, none); }
+
+/* MASS-standard dialog spacing. Opt-in via class="mass-dialog".        */
+/* Shoelace applies --header-spacing as the *title* element's padding   */
+/* (not a header wrapper's), so we drive these via the SL spacing       */
+/* variables rather than ::part(header) overrides — the latter target   */
+/* parts Shoelace doesn't actually pad.                                  */
+sl-dialog.mass-dialog {
+  --header-spacing: var(--sl-spacing-medium);
+  --body-spacing: var(--sl-spacing-medium);
+  --footer-spacing: var(--sl-spacing-medium);
+}
 
 /* ── Badges ──────────────────────────────────────────────────────────── */
 /* Generic badges driven by --mass-badge-* variables (light/dark aware).   */
@@ -194,15 +384,82 @@ body { background: var(--mass-bg-base) !important; color: var(--mass-text) !impo
 .mass-badge-alt { background: var(--mass-badge-alt-bg) !important; color: var(--mass-badge-alt-text) !important; }
 
 /* ── Scrollbars ──────────────────────────────────────────────────────── */
+/* No :hover variant here: scrollbar-color inherits and :hover re-resolves per
+   element, so during a wheel scroll the async hover recalc under the pointer
+   made thumbs flicker between the two colors. The thumb-only hover below covers
+   engines that honor the -webkit pseudos instead.
+   WebKitGTK (Adwaita) derives the interaction states from scrollbar-color:
+   hover = thumb lightened (+0.33 on the max channel), pressed = darkened
+   (-0.33) — so each theme picks --mass-scrollbar-thumb bright enough to survive
+   both, or the pressed thumb lands near black and vanishes on dark themes. The
+   faint text-tinted track gives the expanded (hover/drag) bar a groove so every
+   state keeps an edge against the page. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--mass-border) transparent;
-}
-*:hover {
-  scrollbar-color: var(--mass-text-muted) transparent;
+  scrollbar-color: var(--mass-scrollbar-thumb, var(--mass-border)) color-mix(in srgb, var(--mass-text) 10%, transparent);
 }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--mass-border); border-radius: 3px; }
+::-webkit-scrollbar-track { background: color-mix(in srgb, var(--mass-text) 10%, transparent); }
+::-webkit-scrollbar-thumb { background: var(--mass-scrollbar-thumb, var(--mass-border)); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--mass-text-muted); }
 ::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Base reset ───────────────────────────────────────────────────────────── */
+/* The small slice of Tailwind's Preflight the pages actually relied on, now     */
+/* that the Tailwind CDN is gone: border-box sizing (so padded boxes don't       */
+/* overflow and force a scrollbar), zeroed default margins, and a consistent     */
+/* sans font + line-height (the browser default serif/metrics otherwise show     */
+/* through). Scoped defaults — apps and Shoelace can still override per element.  */
+*, ::before, ::after { box-sizing: border-box; }
+html { line-height: 1.5; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: inherit;
+}
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd { margin: 0; }
+h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+button, input, optgroup, select, textarea { font: inherit; margin: 0; }
+
+/* ── Utility classes ──────────────────────────────────────────────────────── */
+/* A small, fixed set of layout utilities (Tailwind-compatible names) used by    */
+/* MASS and the standalone apps, hand-written so pages need no Tailwind CDN/JIT   */
+/* at runtime — the app loads fully offline and starts instantly.                */
+.flex { display: flex; }
+.grid { display: grid; }
+.hidden { display: none; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1 1 0%; }
+.flex-shrink-0 { flex-shrink: 0; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.min-h-screen { min-height: 100vh; }
+.min-w-0 { min-width: 0; }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.overflow-y-auto { overflow-y: auto; }
+.rounded { border-radius: 0.25rem; }
+.border { border-width: 1px; border-style: solid; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.block { display: block; }
+.text-center { text-align: center; }
+.px-1 { padding-left: 0.25rem; padding-right: 0.25rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.py-0 { padding-top: 0; padding-bottom: 0; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }

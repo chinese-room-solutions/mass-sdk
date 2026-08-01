@@ -1,7 +1,8 @@
 .PHONY: lint test proto
 
 lint:
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run --timeout 2m ./...
+	@# golangci-lint must be built with a toolchain >= the repo's go directive or it refuses to load.
+	GOTOOLCHAIN=go$$(go list -m -f '{{.GoVersion}}') go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0 run --timeout 2m ./...
 
 test:
 	go test ./...
