@@ -9,15 +9,16 @@ import (
 )
 
 // Bytes formats a byte count as a human-readable size string with binary
-// units (1 KiB = 1024 B). Examples: "0 B", "1.0 KB", "4.2 GB".
+// units (1 KiB = 1024 B), labelled as such. Examples: "0 B", "1.0 KiB",
+// "4.2 GiB".
 func Bytes(b int64) string {
 	switch {
 	case b >= 1<<30:
-		return fmt.Sprintf("%.1f GB", float64(b)/float64(1<<30))
+		return fmt.Sprintf("%.1f GiB", float64(b)/float64(1<<30))
 	case b >= 1<<20:
-		return fmt.Sprintf("%.1f MB", float64(b)/float64(1<<20))
+		return fmt.Sprintf("%.1f MiB", float64(b)/float64(1<<20))
 	case b >= 1<<10:
-		return fmt.Sprintf("%.1f KB", float64(b)/float64(1<<10))
+		return fmt.Sprintf("%.1f KiB", float64(b)/float64(1<<10))
 	default:
 		return fmt.Sprintf("%d B", b)
 	}
@@ -57,13 +58,22 @@ func Params(n int64) string {
 	}
 }
 
-// Truncate shortens s to maxLen, replacing the dropped tail with "..." when
-// truncation occurs. Returns s unchanged when len(s) <= maxLen.
+// Truncate shortens s to at most maxLen runes, replacing the dropped tail with
+// "..." when truncation occurs. Rune-safe: never splits a multi-byte character.
+// When maxLen < 3 there is no room for the ellipsis, so a longer s is cut to
+// its first maxLen runes (maxLen <= 0 yields "").
 func Truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	if maxLen <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	if maxLen < 3 {
+		return string(r[:maxLen])
+	}
+	return string(r[:maxLen-3]) + "..."
 }
 
 // JSONEscape escapes a string for safe embedding inside a JSON string value
@@ -71,5 +81,15 @@ func Truncate(s string, maxLen int) string {
 // paths that just need backslash + quote + newline handling.
 func JSONEscape(s string) string {
 	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`, "\t", `\t`)
+	return r.Replace(s)
+}
+
+// JSEscape escapes a string for safe embedding inside a JavaScript string
+// literal — escapes both single and double quotes plus newlines, and "<" (as
+// \u003c) so a value containing "</script>" can't break out of a surrounding
+// <script> body. Use for inline event-handler attributes (e.g.
+// `data-on:click="foo('{value}')"`) where the surrounding quote style may vary.
+func JSEscape(s string) string {
+	r := strings.NewReplacer(`\`, `\\`, `'`, `\'`, `"`, `\"`, "\n", `\n`, "\r", `\r`, "<", `\u003c`)
 	return r.Replace(s)
 }

@@ -1,0 +1,96 @@
+/* ── MASS pluggable theme file ────────────────────────────────────────────── */
+/* Copy this file into ~/.config/mass/themes/NAME.css to add your own theme.    */
+/*                                                                              */
+/* Format:                                                                      */
+/*   - The file name (without .css) is the theme's stable name AND its CSS      */
+/*     class suffix. It must match  ^[a-z][a-z0-9-]0,31$  and must not collide  */
+/*     with the built-in "dark" or "light" names.                              */
+/*   - The body is CSS custom-property declarations and comments ONLY. It is    */
+/*     wrapped verbatim into an html.sl-theme-NAME rule, so it must contain no  */
+/*     curly braces or angle brackets (color-mix() parens are fine). A partial  */
+/*     token set is legal; anything you leave out inherits from the base theme. */
+/*   - Two optional directives, each on its own comment line (see below):       */
+/*       a "base" directive picks which built-in this theme layers on           */
+/*         (dark or light — sets color-scheme and the Shoelace class);          */
+/*         it defaults to dark when omitted.                                    */
+/*       a "label" directive sets the user-visible name; it defaults to the     */
+/*         file name title-cased with dashes turned into spaces.                */
+/*   - The picker's page background is taken from this file's --mass-bg-base.    */
+
+/* base: dark */
+/* label: Synthwave */
+
+/* Palette after the Synthwave '84 look: deep-purple surfaces, warm off-white
+   text, hot-pink primary accent with a neon glow, cyan as the secondary pop. */
+
+--mass-bg-base:    #241b2f;
+--mass-bg-panel:   #2a2139;
+--mass-bg-hover:   #34294f;
+--mass-bg-active:  rgba(255,126,219,.2);
+--mass-border:     #5b4b96;
+--mass-scrollbar-thumb: #8f7dd0; /* bright: WebKit pressed(darkened) must stay visible on #241b2f */
+--mass-text:       #f4eee4;
+--mass-text-muted: #b893ce;
+--mass-text-faint: #848bbd;
+
+--mass-accent:       #ff7edb;
+--mass-accent-soft:  color-mix(in srgb, var(--mass-accent) 16%, transparent);
+--mass-accent-fill:  #cc2498;
+--mass-success:      #72f1b8;
+--mass-success-soft: color-mix(in srgb, var(--mass-success) 14%, transparent);
+--mass-success-fill: #10805b;
+--mass-warning:      #fede5d;
+--mass-warning-soft: color-mix(in srgb, var(--mass-warning) 14%, transparent);
+--mass-warning-fill: #9b6612;
+--mass-danger:       #fe4450;
+--mass-danger-soft:  color-mix(in srgb, var(--mass-danger) 14%, transparent);
+--mass-danger-fill:  #d32846;
+
+--sl-color-neutral-400: #b893ce;
+--sl-color-neutral-500: #9c7ab8;
+--sl-color-neutral-600: #8163a2;
+--sl-input-border-color: #5b4b96;
+
+--mass-avatar-bg:   #34294f;
+--mass-avatar-text: var(--mass-text);
+--mass-badge-bg:   #453a75;
+--mass-badge-text: #f4eee4;
+--mass-badge-alt-bg:   #123c3b;
+--mass-badge-alt-text: #36f9f6;
+--mass-fb-selected:#34294f;
+
+--mass-log-time:   #848bbd;
+--mass-log-msg:    #f4eee4;
+--mass-log-key:    #36f9f6;
+--mass-log-val:    #b893ce;
+--mass-log-inf:    #72f1b8;
+--mass-log-dbg:    #848bbd;
+--mass-log-wrn:    #fede5d;
+--mass-log-err:    #fe4450;
+
+/* Neon halos (var hooks in the SDK's and MASS's component styles; themes
+   that don't set them get no glow). Soft blooms tuned so adjacent halos die
+   out before they merge. */
+--mass-glow-primary: 0 0 6px rgba(255,126,219,.4), 0 0 14px rgba(255,126,219,.16);
+--mass-glow-focus:   0 0 5px rgba(255,126,219,.35), 0 0 12px rgba(255,126,219,.12);
+--mass-glow-danger:  0 0 6px rgba(254,68,80,.35), 0 0 13px rgba(254,68,80,.14);
+--mass-glow-success: 0 0 4px rgba(114,241,184,.45), 0 0 8px rgba(114,241,184,.18);
+--mass-glow-panel:   0 0 14px rgba(255,126,219,.12);
+--mass-glow-heading: 0 0 8px rgba(255,126,219,.3);
+--mass-glow-tab:     0 0 8px rgba(255,126,219,.45);
+--mass-glow-logo:    drop-shadow(0 0 4px rgba(255,126,219,.4));
+
+/* Primary scale rebased on hot pink (#ff7edb at 400), ramped to near-white at
+   50 and near-black at 950 with the hue held — mirroring how the built-in dark
+   block ramps the brand blue. Drives focus rings, switches, progress bars. */
+--sl-color-primary-50:  #fff0fb;
+--sl-color-primary-100: #ffdff5;
+--sl-color-primary-200: #ffbfec;
+--sl-color-primary-300: #ff9fe3;
+--sl-color-primary-400: #ff7edb;
+--sl-color-primary-500: #e854c0;
+--sl-color-primary-600: #d12aa5;
+--sl-color-primary-700: #ab1f87;
+--sl-color-primary-800: #83186a;
+--sl-color-primary-900: #5c114c;
+--sl-color-primary-950: #380b30;

@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +18,15 @@ import (
 	"github.com/KernelPryanic/ctxerr"
 )
 
-const apiBase = "https://huggingface.co/api/models"
+const (
+	apiHost = "huggingface.co"
+	apiBase = "https://" + apiHost + "/api/models"
+
+	// defaultTimeout caps each HF API request when the caller doesn't supply its
+	// own http.Client — the hub occasionally hangs, and an unbounded
+	// http.DefaultClient call would hang the search with it.
+	defaultTimeout = 30 * time.Second
+)
 
 // Model represents a HuggingFace model with its GGUF files.
 type Model struct {
@@ -106,12 +116,108 @@ type CacheStoreInterface interface {
 // Client provides HuggingFace API access with optional caching.
 type Client struct {
 	cache CacheStoreInterface
+	hc    *http.Client
+	token string
+}
+
+// Option configures a Client.
+type Option func(*Client)
+
+// WithHTTPClient replaces the default HTTP client (which carries
+// defaultTimeout) — e.g. to route through a proxy or set custom TLS.
+func WithHTTPClient(hc *http.Client) Option {
+	return func(c *Client) { c.hc = hc }
+}
+
+// WithToken sends the given HF access token as a Bearer Authorization header
+// on every request, for gated/private repos and higher rate limits.
+func WithToken(token string) Option {
+	return func(c *Client) { c.token = token }
 }
 
 // NewClient creates a HuggingFace client. If cache is nil, all calls
 // go directly to the HF API with no caching.
-func NewClient(cache CacheStoreInterface) *Client {
-	return &Client{cache: cache}
+func NewClient(cache CacheStoreInterface, opts ...Option) *Client {
+	c := &Client{cache: cache, hc: &http.Client{Timeout: defaultTimeout}}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+// Rate-limit cool-off bounds. A search resolves files and avatars five requests
+// at a time, which is exactly when the hub answers 429, and a single short wait
+// clears it. Longer cool-offs are not waited out: the caller is a person looking
+// at a model picker, and blocking them is worse than showing the error.
+const (
+	retryAfterMax     = 10 * time.Second
+	retryAfterDefault = 1 * time.Second
+)
+
+// get issues an authenticated GET through the client's HTTP client, retrying a
+// 429 once after the hub's Retry-After cool-off. A cool-off longer than
+// retryAfterMax is not waited for — the 429 is returned as-is.
+func (c *Client) get(ctx context.Context, u string) (*http.Response, error) {
+	resp, err := c.do(ctx, u)
+	if err != nil || resp.StatusCode != http.StatusTooManyRequests {
+		return resp, err
+	}
+
+	delay, worthWaiting := retryAfter(resp.Header.Get("Retry-After"))
+	if !worthWaiting {
+		return resp, nil
+	}
+	// Drain and close the 429 so its connection is reusable for the retry.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
+	if closeErr := resp.Body.Close(); closeErr != nil {
+		return nil, closeErr
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(delay):
+	}
+	return c.do(ctx, u)
+}
+
+// do performs one authenticated GET.
+func (c *Client) do(ctx context.Context, u string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	return c.hc.Do(req)
+}
+
+// retryAfter reads a Retry-After value — delta-seconds or an HTTP-date, per RFC
+// 9110 — and reports whether waiting it out is worthwhile. A missing or
+// unparseable value falls back to retryAfterDefault; a cool-off past
+// retryAfterMax reports false.
+func retryAfter(v string) (time.Duration, bool) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return retryAfterDefault, true
+	}
+	var d time.Duration
+	if secs, err := strconv.Atoi(v); err == nil {
+		d = time.Duration(secs) * time.Second
+	} else if t, err := http.ParseTime(v); err == nil {
+		d = time.Until(t)
+	} else {
+		return retryAfterDefault, true
+	}
+	switch {
+	case d <= 0:
+		return 0, true // already elapsed: retry at once.
+	case d > retryAfterMax:
+		return 0, false
+	default:
+		return d, true
+	}
 }
 
 // Cache TTL durations.
@@ -129,8 +235,16 @@ func Search(ctx context.Context, query string, opts SearchOptions) (*SearchResul
 }
 
 // Search queries the HuggingFace API for models matching the given query.
-// Results are sorted by downloads descending.
+// Results are sorted by downloads descending. A non-empty opts.Cursor must be
+// an https huggingface.co URL (the value a previous SearchResult supplied);
+// anything else is rejected before any request is made.
 func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (*SearchResult, error) {
+	if opts.Cursor != "" {
+		if err := validateCursor(opts.Cursor); err != nil {
+			return nil, err
+		}
+	}
+
 	limit := opts.Limit
 	if limit <= 0 {
 		limit = 5
@@ -138,14 +252,17 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 
 	apiBatchSize := limit
 
+	// The HF API keeps free-text (`search=`) and library/tag matching (`filter=`)
+	// separate. Extension filtering belongs in `filter` — folding the extension
+	// keyword into `search` (as this once did) turns "pdf2html" into "pdf2html
+	// gguf", which the full-text index matches against the repo id and so returns
+	// nothing for a repo that has .gguf files but no "gguf" in its name. Map each
+	// extension to its library tag (".gguf" → "gguf") and pass those as filters.
 	searchQuery := query
-	if len(opts.FileExts) > 0 {
-		for _, ext := range opts.FileExts {
-			kw := strings.TrimPrefix(strings.ToLower(ext), ".")
-			if kw != "" && !strings.Contains(strings.ToLower(query), kw) {
-				searchQuery = query + " " + kw
-				break
-			}
+	filters := make([]string, 0, len(opts.FileExts))
+	for _, ext := range opts.FileExts {
+		if tag := strings.TrimPrefix(strings.ToLower(ext), "."); tag != "" {
+			filters = append(filters, tag)
 		}
 	}
 
@@ -167,9 +284,9 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 		var err error
 
 		if nextURL != "" {
-			batch, linkNext, err = fetchAPIURL(ctx, nextURL)
+			batch, linkNext, err = c.fetchAPIURL(ctx, nextURL)
 		} else {
-			batch, linkNext, err = fetchAPIBatch(ctx, searchQuery, "", apiBatchSize)
+			batch, linkNext, err = c.fetchAPIBatch(ctx, searchQuery, "", filters, apiBatchSize)
 		}
 		if err != nil {
 			if len(collected) > 0 {
@@ -196,9 +313,6 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 		var candidates []apiModelResponse
 		for _, am := range batch {
 			if excludeIDs[am.ID] {
-				continue
-			}
-			if len(opts.FileExts) > 0 && !repoLikelyHasExt(am.ID, opts.FileExts) {
 				continue
 			}
 			candidates = append(candidates, am)
@@ -248,8 +362,15 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 
 // FindMmproj queries the HuggingFace tree API for a repo and returns the
 // filename of an mmproj (vision projector) GGUF if one exists, or empty string.
+// This is a convenience wrapper that uses an uncached client.
 func FindMmproj(ctx context.Context, repoID string) (string, error) {
-	files, err := fetchMatchingFiles(ctx, repoID, nil)
+	return NewClient(nil).FindMmproj(ctx, repoID)
+}
+
+// FindMmproj queries the HuggingFace tree API for a repo and returns the
+// filename of an mmproj (vision projector) GGUF if one exists, or empty string.
+func (c *Client) FindMmproj(ctx context.Context, repoID string) (string, error) {
+	files, err := c.fetchMatchingFiles(ctx, repoID, nil)
 	if err != nil {
 		return "", err
 	}
@@ -262,19 +383,51 @@ func FindMmproj(ctx context.Context, repoID string) (string, error) {
 	return "", nil
 }
 
+// ListFiles returns every file in the given HuggingFace repo's tree. This is a
+// convenience wrapper that uses an uncached client.
+func ListFiles(ctx context.Context, repoID string, exts []string) ([]GGUFFile, error) {
+	return NewClient(nil).ListFiles(ctx, repoID, exts)
+}
+
 // ListFiles returns every file in the given HuggingFace repo's tree.
 // When exts is non-empty, only files whose name ends with one of the given
 // extensions are returned. Used by gateways planning multi-file model
 // installs (e.g. companion mmproj alongside a chat GGUF).
-func ListFiles(ctx context.Context, repoID string, exts []string) ([]GGUFFile, error) {
-	return fetchMatchingFiles(ctx, repoID, exts)
+func (c *Client) ListFiles(ctx context.Context, repoID string, exts []string) ([]GGUFFile, error) {
+	return c.fetchMatchingFiles(ctx, repoID, exts)
 }
 
-// SanitizeRepoID converts a repo ID to a directory path.
-// The result preserves the "/" separator so downloads use a
-// two-level directory structure: {publisher}/{repo}.
-func SanitizeRepoID(repoID string) string {
-	return repoID
+// repoIDPattern is the {owner}/{name} shape of a HuggingFace repo id: exactly
+// one "/", each segment starting with an alphanumeric and continuing with
+// alphanumerics, "_", "." or "-". Requiring an alphanumeric head also rules
+// out "." / ".." path segments.
+var repoIDPattern = regexp.MustCompile(`^[A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*$`)
+
+// SanitizeRepoID validates that repoID has the {owner}/{name} HuggingFace repo
+// shape and returns it for use as a two-level relative directory path
+// ({publisher}/{repo}). Anything else — absolute paths, traversal segments,
+// extra separators — is rejected, so a repo id from an untrusted source can't
+// escape the download root.
+func SanitizeRepoID(repoID string) (string, error) {
+	if !repoIDPattern.MatchString(repoID) {
+		return "", fmt.Errorf("invalid HuggingFace repo id %q (want owner/name)", repoID)
+	}
+	return repoID, nil
+}
+
+// validateCursor ensures the opaque pagination cursor — a URL taken from a
+// previous response's Link header — still points at the HuggingFace API over
+// https, so a stored/tampered cursor can't redirect the client (and its bearer
+// token) to an arbitrary host.
+func validateCursor(cursor string) error {
+	u, err := url.Parse(cursor)
+	if err != nil {
+		return fmt.Errorf("invalid search cursor: %w", err)
+	}
+	if u.Scheme != "https" || u.Hostname() != apiHost {
+		return fmt.Errorf("invalid search cursor %q: not an https %s URL", cursor, apiHost)
+	}
+	return nil
 }
 
 func filterByPipelineTag(models []apiModelResponse, tags []string) []apiModelResponse {
@@ -291,7 +444,7 @@ func filterByPipelineTag(models []apiModelResponse, tags []string) []apiModelRes
 	return out
 }
 
-func fetchAPIBatch(ctx context.Context, searchQuery, pipelineTag string, limit int) ([]apiModelResponse, string, error) {
+func (c *Client) fetchAPIBatch(ctx context.Context, searchQuery, pipelineTag string, filters []string, limit int) ([]apiModelResponse, string, error) {
 	u, _ := url.Parse(apiBase)
 	q := u.Query()
 	q.Set("search", searchQuery)
@@ -301,18 +454,18 @@ func fetchAPIBatch(ctx context.Context, searchQuery, pipelineTag string, limit i
 	if pipelineTag != "" {
 		q.Set("pipeline_tag", pipelineTag)
 	}
+	// Library/tag filters (e.g. "gguf"). Repeated `filter=` params AND together
+	// on the HF side — a model must carry every tag to match.
+	for _, f := range filters {
+		q.Add("filter", f)
+	}
 	u.RawQuery = q.Encode()
 
-	return fetchAPIURL(ctx, u.String())
+	return c.fetchAPIURL(ctx, u.String())
 }
 
-func fetchAPIURL(ctx context.Context, apiURL string) ([]apiModelResponse, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return nil, "", fmt.Errorf("creating search request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+func (c *Client) fetchAPIURL(ctx context.Context, apiURL string) ([]apiModelResponse, string, error) {
+	resp, err := c.get(ctx, apiURL)
 	if err != nil {
 		return nil, "", ctxerr.With(fmt.Errorf("searching HuggingFace: %w", err), map[string]any{"url": apiURL})
 	}
@@ -398,7 +551,7 @@ func (c *Client) fetchMatchingFilesCached(ctx context.Context, repoID string, ex
 		}
 	}
 
-	allFiles, err := fetchMatchingFiles(ctx, repoID, nil)
+	allFiles, err := c.fetchMatchingFiles(ctx, repoID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +577,7 @@ func (c *Client) fetchParamCountCached(ctx context.Context, repoID string) int64
 		}
 	}
 
-	n := fetchParamCount(ctx, repoID)
+	n := c.fetchParamCount(ctx, repoID)
 
 	if c.cache != nil {
 		key := "hf:params:" + repoID
@@ -436,13 +589,9 @@ func (c *Client) fetchParamCountCached(ctx context.Context, repoID string) int64
 	return n
 }
 
-func fetchParamCount(ctx context.Context, repoID string) int64 {
+func (c *Client) fetchParamCount(ctx context.Context, repoID string) int64 {
 	u := fmt.Sprintf("%s/%s?expand[]=gguf&expand[]=safetensors", apiBase, repoID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return 0
-	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.get(ctx, u)
 	if err != nil {
 		return 0
 	}
@@ -457,15 +606,10 @@ func fetchParamCount(ctx context.Context, repoID string) int64 {
 	return data.paramCount()
 }
 
-func fetchMatchingFiles(ctx context.Context, repoID string, exts []string) ([]GGUFFile, error) {
+func (c *Client) fetchMatchingFiles(ctx context.Context, repoID string, exts []string) ([]GGUFFile, error) {
 	treeURL := fmt.Sprintf("%s/%s/tree/main", apiBase, repoID)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, treeURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.get(ctx, treeURL)
 	if err != nil {
 		return nil, err
 	}
@@ -567,7 +711,7 @@ func (c *Client) fetchAuthorAvatarCached(ctx context.Context, author string) str
 		}
 	}
 
-	avatarURL := fetchAuthorAvatar(ctx, author)
+	avatarURL := c.fetchAuthorAvatar(ctx, author)
 
 	if c.cache != nil {
 		key := "hf:avatar:" + author
@@ -577,22 +721,18 @@ func (c *Client) fetchAuthorAvatarCached(ctx context.Context, author string) str
 	return avatarURL
 }
 
-func fetchAuthorAvatar(ctx context.Context, author string) string {
+func (c *Client) fetchAuthorAvatar(ctx context.Context, author string) string {
 	for _, kind := range []string{"users", "organizations"} {
-		if u := tryFetchAvatar(ctx, kind, author); u != "" {
+		if u := c.tryFetchAvatar(ctx, kind, author); u != "" {
 			return u
 		}
 	}
 	return ""
 }
 
-func tryFetchAvatar(ctx context.Context, kind, author string) string {
-	u := fmt.Sprintf("https://huggingface.co/api/%s/%s/overview", kind, url.PathEscape(author))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return ""
-	}
-	resp, err := http.DefaultClient.Do(req)
+func (c *Client) tryFetchAvatar(ctx context.Context, kind, author string) string {
+	u := fmt.Sprintf("https://%s/api/%s/%s/overview", apiHost, kind, url.PathEscape(author))
+	resp, err := c.get(ctx, u)
 	if err != nil {
 		return ""
 	}
@@ -613,15 +753,4 @@ func tryFetchAvatar(ctx context.Context, kind, author string) string {
 		return data.AvatarURL
 	}
 	return ""
-}
-
-func repoLikelyHasExt(repoID string, exts []string) bool {
-	lower := strings.ToLower(repoID)
-	for _, ext := range exts {
-		kw := strings.TrimPrefix(strings.ToLower(ext), ".")
-		if strings.Contains(lower, kw) {
-			return true
-		}
-	}
-	return false
 }

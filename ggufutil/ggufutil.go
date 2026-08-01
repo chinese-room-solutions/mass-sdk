@@ -6,15 +6,9 @@ package ggufutil
 import "strings"
 
 // ExtractQuant pulls the trailing quant tag from a GGUF filename
-// (e.g. "model-Q4_K_M.gguf" → "Q4_K_M"). Preserves community-used
-// prefixes that travel with the quant ("Qwen3.5-4B-UD-Q4_K_XL.gguf"
-// → "UD-Q4_K_XL"). Returns "" when no quant pattern is found.
-//
-// Splits on '.' and '-' (not '_', so multi-word tags like "Q4_K_M" stay
-// intact), walks parts right-to-left, finds the rightmost quant-shaped
-// token per [IsQuantToken], then absorbs any short ALL-CAPS modifier
-// tokens immediately to the left (recognised by [IsQuantPrefixToken])
-// so labels like "UD-Q4_K_XL" stay whole.
+// ("model-Q4_K_M.gguf" → "Q4_K_M"). Community-used prefixes that
+// travel with the quant are preserved, so "Qwen3.5-4B-UD-Q4_K_XL.gguf"
+// → "UD-Q4_K_XL". Returns "" when no quant pattern is found.
 func ExtractQuant(filename string) string {
 	base := strings.TrimSuffix(filename, ".gguf")
 	parts := strings.FieldsFunc(base, func(r rune) bool { return r == '.' || r == '-' })
