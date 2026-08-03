@@ -184,6 +184,21 @@ html:not(.sl-theme-light):not([class*=" sl-theme-"]) {
   --mass-warning-fill: var(--mass-warning);
   --mass-danger-fill:  var(--mass-danger);
   --mass-fill-text:    #0d1b24;
+
+  /* Neon halos, the same var hooks Synthwave sets. The bloom is the saturated
+     blue (#5cb6eb, primary-400) rather than the accent itself: #daf0fd is
+     already near-white, and a white halo around a white fill reads as blur
+     instead of light. Each role glows in its own colour so a badge row stays
+     legible. Scoped with the inverted fills — an overlay dark theme keeps the
+     deep fills above, where a halo would fight the button rather than leave it. */
+  --mass-glow-primary: 0 0 6px rgba(92,182,235,.45), 0 0 14px rgba(92,182,235,.18);
+  --mass-glow-focus:   0 0 5px rgba(92,182,235,.4), 0 0 12px rgba(92,182,235,.14);
+  --mass-glow-danger:  0 0 6px rgba(248,113,113,.35), 0 0 13px rgba(248,113,113,.14);
+  --mass-glow-success: 0 0 4px rgba(178,243,121,.45), 0 0 8px rgba(178,243,121,.18);
+  --mass-glow-panel:   0 0 14px rgba(92,182,235,.10);
+  --mass-glow-heading: 0 0 8px rgba(92,182,235,.26);
+  --mass-glow-tab:     0 0 8px rgba(92,182,235,.45);
+  --mass-glow-logo:    drop-shadow(0 0 4px rgba(92,182,235,.4));
 }
 
 /* ── Default Shoelace scales ─────────────────────────────────────────── */
