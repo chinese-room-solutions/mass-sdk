@@ -372,15 +372,18 @@ sl-textarea::part(base) {
   border-color: var(--mass-border) !important;
   color: var(--mass-text) !important;
 }
-/* Focus state: keep the border accent but replace Shoelace's default
-   "focus ring" box-shadow which paints a wide greenish halo outside
-   the element. --mass-glow-focus lets a theme add its own halo
-   (defaults to none); the border-color change carries the affordance. */
+/* Focus state: the border takes the theme accent, replacing Shoelace's default
+   "focus ring" box-shadow which paints a wide greenish halo outside the
+   element. --mass-glow-focus lets a theme add its own halo (defaults to none);
+   the border-color change carries the affordance.
+   The accent, not --sl-color-primary-500: a theme that re-ramps primary around
+   its accent (Cream, synthwave) looked right either way, but one that leaves
+   the shared ramp alone got a focus colour appearing nowhere else in it. */
 sl-input:focus-within::part(base),
 sl-select:focus-within::part(combobox),
 sl-textarea:focus-within::part(base) {
   box-shadow: var(--mass-glow-focus, none) !important;
-  border-color: var(--sl-color-primary-500, #3b82f6) !important;
+  border-color: var(--mass-accent) !important;
 }
 sl-input::part(input),
 sl-select::part(display-input),
