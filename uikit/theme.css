@@ -4,14 +4,18 @@
 
 /* ── Cream (built-in light) ──────────────────────────────────────────── */
 /* Ivory panels on a cream canvas, warm espresso ink, and dusty
-   (desaturated) semantic hues — soft, never gray. Everything holds
-   WCAG AA (>=4.5:1) on the surface it appears on. */
+   (desaturated) semantic hues — soft, never gray. The accent is a velvet
+   brown: low chroma, so it sits in the cream rather than on top of it.
+   Every role holds WCAG AA (>=4.5:1) on the surface it appears on EXCEPT the
+   accent, which is a deliberate brand choice at 3.7:1 on the base and 4.0:1
+   for label text on the fill. #88613f is the same colour at AA if that floor
+   matters more than the shade. */
 html.sl-theme-light {
   color-scheme: light;
   --mass-bg-base:    #f5efe2;
   --mass-bg-panel:   #fdfaf1;
   --mass-bg-hover:   #eae2cf;
-  --mass-bg-active:  #e2e8f2;
+  --mass-bg-active:  #e6d0ac;
   --mass-border:     #d3c6ad;
   --mass-scrollbar-thumb: #7d7159; /* rest 4.2:1; WebKit pressed(darkened) 13:1 */
   --mass-text:       #453d31;
@@ -20,23 +24,27 @@ html.sl-theme-light {
   /* Each semantic role has three companions, used consistently across the family:
        --mass-<role>        text/icon colour (tuned for contrast on the page bg)
        --mass-<role>-soft   translucent tint for chip/callout fills
-       --mass-<role>-fill   solid button background, deep enough for white label
-                            text (the text colour is often too light for that)
+       --mass-<role>-fill   solid button/badge background. Every role here
+                            fills with its own colour, so an icon and the badge
+                            beside it are one shade rather than two.
      Filled primary-style buttons all derive their hover the same way:
      color-mix(... 88%, #000) — see the sl-button rules below. The hues run
-     dusty here (denim, sage, caramel, terracotta) to stay gentle on cream. */
-  --mass-accent:       #46688f;
+     dusty here (velvet brown, sage, gold, brick) to stay gentle on cream. The
+     accent's neighbours are pushed off its hue so a badge row stays readable:
+     warning runs vivid gold (h44, S90) rather than umber, danger runs brick
+     (h6) rather than terracotta — both were within 20° of the brown. */
+  --mass-accent:       #9e714a;
   --mass-accent-soft:  color-mix(in srgb, var(--mass-accent) 14%, transparent);
-  --mass-accent-fill:  #52739c;
+  --mass-accent-fill:  var(--mass-accent);
   --mass-success:      #55752c;
   --mass-success-soft: color-mix(in srgb, #8fbf4a 22%, transparent);
-  --mass-success-fill: #567631;
-  --mass-warning:      #8f6212;
-  --mass-warning-soft: color-mix(in srgb, #d19125 18%, transparent);
-  --mass-warning-fill: #96650f;
-  --mass-danger:       #ab4a38;
-  --mass-danger-soft:  color-mix(in srgb, #cd6a52 16%, transparent);
-  --mass-danger-fill:  #ab4a38;
+  --mass-success-fill: var(--mass-success);
+  --mass-warning:      #836207;
+  --mass-warning-soft: color-mix(in srgb, #cf9a1e 18%, transparent);
+  --mass-warning-fill: var(--mass-warning);
+  --mass-danger:       #9c3a30;
+  --mass-danger-soft:  color-mix(in srgb, #c4564a 16%, transparent);
+  --mass-danger-fill:  var(--mass-danger);
   /* Label colour on -fill backgrounds (filled buttons, solid badges):
      warm off-white instead of pure white. */
   --mass-fill-text: #faf8f6;
@@ -49,15 +57,15 @@ html.sl-theme-light {
   --mass-badge-text: #574c38;
   --mass-badge-alt-bg:   #e3eed2;
   --mass-badge-alt-text: #3f6320;
-  --mass-fb-selected:#cfdff0;
+  --mass-fb-selected:#f0dcc4;
   --mass-log-time:   #776a57;
   --mass-log-msg:    #453d31;
-  --mass-log-key:    #22707a;
+  --mass-log-key:    #2e6a63;
   --mass-log-val:    #6d6252;
-  --mass-log-inf:    #38773a;
+  --mass-log-inf:    #4a7524;
   --mass-log-dbg:    #776a57;
-  --mass-log-wrn:    #8f6212;
-  --mass-log-err:    #b3453a;
+  --mass-log-wrn:    #836207;
+  --mass-log-err:    #a83f34;
 
   /* Shoelace's default neutral scale is a cool gray — it paints default-button
      borders, dividers, icon-buttons, switches — and reads as "gray office"
@@ -75,28 +83,54 @@ html.sl-theme-light {
   --sl-color-neutral-900: #362f25;
   --sl-color-neutral-950: #26211a;
   --sl-input-border-color: #d3c6ad;
+
+  /* Shoelace's primary scale paints focus rings, switches and checkboxes. The
+     shared one at the bottom of this file is a cold blue — the wrong family on
+     cream — so Cream re-ramps it around the velvet-brown accent. The ladder
+     runs darker than the shared one: -500 lands on the accent (focus rings,
+     switches), and -600/-700 stay dark enough for link text to hold AA, which
+     the accent itself does not. */
+  --sl-color-primary-50:  #f8f2ec;
+  --sl-color-primary-100: #eee0d3;
+  --sl-color-primary-200: #e0c8b3;
+  --sl-color-primary-300: #ceab8d;
+  --sl-color-primary-400: #b98c64;
+  --sl-color-primary-500: #9d7048;
+  --sl-color-primary-600: #88613f;
+  --sl-color-primary-700: #775537;
+  --sl-color-primary-800: #63462c;
+  --sl-color-primary-900: #4d3723;
+  --sl-color-primary-950: #382819;
 }
 
-/* ── Carbon (built-in dark, and the fallback for unknown themes) ─────── */
+/* ── Dark base: Carbon's surfaces, and what every pluggable dark theme
+      inherits ─────────────────────────────────────────────────────────── */
+/* Neutral carbon surfaces so the accent reads as the only colour in the
+   frame: a cold blue star. The cool greys are held on hue ~202 too — they had
+   drifted to h218-240 and read violet beside the blue.
+   Keep this block conservative: an overlay theme overrides only the tokens it
+   names, so anything opinionated here lands on themes that never asked for it.
+   The -fill values are the safe deep ones — Carbon's own inverted fills live
+   in the scoped block underneath. */
 html.sl-theme-dark,
 html:not(.sl-theme-light) {
   color-scheme: dark;
   --mass-bg-base:    #171616;
   --mass-bg-panel:   #1e1d1d;
   --mass-bg-hover:   #2e2d2d;
-  --mass-bg-active:  rgba(64,64,64,0.6);
-  --mass-border:     #3d3d3d;
-  --mass-scrollbar-thumb: #9e9e9e; /* bright: WebKit pressed(darkened -0.33) must stay ≥2:1 on #171616 */
-  --mass-text:       #d4d4d8;
+  --mass-bg-active:  rgba(29,122,176,0.35);
+  --mass-border:     #3b3f43;
+  --mass-scrollbar-thumb: #9aa6ad; /* bright: WebKit pressed(darkened -0.33) must stay ≥2:1 on #171616 */
+  --mass-text:       #d3d8dc;
   --mass-text-muted: #9a9a9a;
   --mass-text-faint: #707070;
   /* Same three-companion set as light (see that block). On dark the bright brand
      shades read well as text, so -soft tints derive straight from them; -fill is a
      shade deep enough that white button text stays legible. */
-  --mass-accent:       #7AA2DB;
+  --mass-accent:       #daf0fd;
   --mass-accent-soft:  color-mix(in srgb, var(--mass-accent) 22%, transparent);
-  --mass-accent-fill:  #4472ae;
-  --mass-success:      #9ae35c;
+  --mass-accent-fill:  #0a5c8c;
+  --mass-success:      #b2f379;
   --mass-success-soft: color-mix(in srgb, var(--mass-success) 14%, transparent);
   --mass-success-fill: #537d10;
   --mass-warning:      #fbbf24;
@@ -108,17 +142,17 @@ html:not(.sl-theme-light) {
   --mass-fill-text: #faf8f6;
   --mass-avatar-bg:   var(--mass-bg-base);
   --mass-avatar-text: var(--mass-text);
-  --mass-badge-bg:   #52525b;
-  --mass-badge-text: #e4e4e7;
-  --mass-badge-alt-bg:   #1a2e1a;
-  --mass-badge-alt-text: #5bd896;
-  --mass-fb-selected:#1e3a5f;
-  --mass-log-time:   #798191;
-  --mass-log-msg:    #e5e7eb;
-  --mass-log-key:    #67e8f9;
-  --mass-log-val:    #9ca3af;
-  --mass-log-inf:    #86efac;
-  --mass-log-dbg:    #9ca3af;
+  --mass-badge-bg:   #4d545a;
+  --mass-badge-text: #e0e5e9;
+  --mass-badge-alt-bg:   #22300f;
+  --mass-badge-alt-text: #a9e977;
+  --mass-fb-selected:#193a4d;
+  --mass-log-time:   #7b8891;
+  --mass-log-msg:    #e3e8eb;
+  --mass-log-key:    #7fd1f0;
+  --mass-log-val:    #9ba7af;
+  --mass-log-inf:    #b6ef86;
+  --mass-log-dbg:    #9ba7af;
   --mass-log-wrn:    #fde68a;
   --mass-log-err:    #fca5a5;
 
@@ -128,31 +162,52 @@ html:not(.sl-theme-light) {
   --sl-color-neutral-400: #9a9a9a;
   --sl-color-neutral-500: #808080;
   --sl-color-neutral-600: #636363;
-  --sl-input-border-color: #3d3d3d;
+  --sl-input-border-color: var(--mass-border);
 }
 
-/* ── Brand colors ────────────────────────────────────────────────────── */
+/* ── Carbon's starlight identity ─────────────────────────────────────── */
+/* Every fill inverted: a dark saturated block behind a white label reads as a
+   generic UI button at any hue, so the fill becomes the light source and the
+   label dark ink. That also keeps a badge row (CPU beside GPU) one system, and
+   lets each fill be its own role colour — the icon, toggle and badge for a
+   device then agree instead of showing two greens.
+   Scoped away from overlay themes, which inherit the block above: a theme that
+   keeps deep fills would otherwise get dark ink on them and turn unreadable,
+   and editing each theme file cannot fix the copies already installed on disk.
+   HTMLClass() emits "sl-theme-dark" alone for Carbon and "sl-theme-dark
+   sl-theme-<name>" for an overlay, so a second " sl-theme-" token is what
+   tells them apart without naming any theme. */
+html.sl-theme-dark:not([class*=" sl-theme-"]),
+html:not(.sl-theme-light):not([class*=" sl-theme-"]) {
+  --mass-accent-fill:  var(--mass-accent);
+  --mass-success-fill: var(--mass-success);
+  --mass-warning-fill: var(--mass-warning);
+  --mass-danger-fill:  var(--mass-danger);
+  --mass-fill-text:    #0d1b24;
+}
+
+/* ── Default Shoelace scales ─────────────────────────────────────────── */
+/* Shoelace paints focus rings, switches, checkboxes and its own component
+   internals from these ramps. They are defaults, not brand colours — there is
+   no palette every theme shares, only each theme's variant. Cream re-ramps
+   primary around its accent below; a pluggable theme may re-ramp any of them. */
 :root,
 .sl-theme-dark,
 .sl-theme-light {
-  --mass-blue:  #6199E3;
-  --mass-green: #B2F379;
-  --mass-red:   #EE5050;
+  /* Primary — the dark base's cold blue. */
+  --sl-color-primary-50:  #ecf7fe;
+  --sl-color-primary-100: #cbe9fb;
+  --sl-color-primary-200: #a2d7f6;
+  --sl-color-primary-300: #7ac5f0;
+  --sl-color-primary-400: #5cb6eb;
+  --sl-color-primary-500: #45a6de;
+  --sl-color-primary-600: #2f95d0;
+  --sl-color-primary-700: #2e7fad;
+  --sl-color-primary-800: #29698e;
+  --sl-color-primary-900: #22516d;
+  --sl-color-primary-950: #193a4d;
 
-  /* Primary palette (based on --mass-blue) */
-  --sl-color-primary-50:  #edf4fd;
-  --sl-color-primary-100: #cfe0f8;
-  --sl-color-primary-200: #a8c9f1;
-  --sl-color-primary-300: #81b1ea;
-  --sl-color-primary-400: #6199E3;
-  --sl-color-primary-500: #5489d2;
-  --sl-color-primary-600: #4778c0;
-  --sl-color-primary-700: #3a66a9;
-  --sl-color-primary-800: #2f548d;
-  --sl-color-primary-900: #244170;
-  --sl-color-primary-950: #192e50;
-
-  /* Danger palette (based on --mass-red) */
+  /* Danger. */
   --sl-color-danger-50:  #fef2f2;
   --sl-color-danger-100: #fde3e3;
   --sl-color-danger-200: #fbb9b9;
@@ -165,7 +220,7 @@ html:not(.sl-theme-light) {
   --sl-color-danger-900: #6e2020;
   --sl-color-danger-950: #4a1515;
 
-  /* Success palette (based on --mass-green) */
+  /* Success. */
   --sl-color-success-50:  #f4fde8;
   --sl-color-success-100: #e4f9c5;
   --sl-color-success-200: #cef49a;
@@ -181,9 +236,8 @@ html:not(.sl-theme-light) {
 
 /* ── Base component styles ───────────────────────────────────────────── */
 
-/* Primary buttons: the soft-blue accent fill (same family as accent text, a shade
-   deeper so white label text stays legible). --mass-glow-primary lets a theme add
-   a neon halo (defaults to none). */
+/* Primary buttons: the accent fill, labelled with the theme's --mass-fill-text.
+   --mass-glow-primary lets a theme add a neon halo (defaults to none). */
 sl-button[variant="primary"]::part(base) {
   background-color: var(--mass-accent-fill) !important;
   border-color: var(--mass-accent-fill) !important;
