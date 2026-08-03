@@ -35,16 +35,20 @@
 
 --mass-accent:       #ff7edb;
 --mass-accent-soft:  color-mix(in srgb, var(--mass-accent) 16%, transparent);
---mass-accent-fill:  #cc2498;
+--mass-accent-fill:  var(--mass-accent);
 --mass-success:      #72f1b8;
 --mass-success-soft: color-mix(in srgb, var(--mass-success) 14%, transparent);
---mass-success-fill: #10805b;
+--mass-success-fill: var(--mass-success);
 --mass-warning:      #fede5d;
 --mass-warning-soft: color-mix(in srgb, var(--mass-warning) 14%, transparent);
---mass-warning-fill: #9b6612;
+--mass-warning-fill: var(--mass-warning);
 --mass-danger:       #fe4450;
 --mass-danger-soft:  color-mix(in srgb, var(--mass-danger) 14%, transparent);
---mass-danger-fill:  #d32846;
+--mass-danger-fill:  var(--mass-danger);
+/* Each role fills with its own colour, so a device icon and the badge beside
+   it are one shade. Those neons are far lighter than a white label, so the
+   label goes dark ink. */
+--mass-fill-text:    #0d1b24;
 
 --sl-color-neutral-400: #b893ce;
 --sl-color-neutral-500: #9c7ab8;

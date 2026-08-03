@@ -130,8 +130,8 @@ func RenderResults(moduleName string, models []ResultModel, opts ResultsOpts) st
 		`var id=window.__hfDlID(file);` +
 		`dlEls(id).forEach(function(el){` +
 		`el.innerHTML='<div style="position:relative;min-width:4rem;height:1.75rem;border-radius:0.25rem;overflow:hidden;background:var(--mass-bg-active)">` +
-		`<div class="hf-dl-bar" style="position:absolute;top:0;left:0;height:100%;width:0%;background:var(--mass-accent-fill);transition:width .3s"></div>` +
-		`<span class="hf-dl-pct" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:100%;font-size:0.75rem;font-weight:600;color:var(--mass-fill-text)">0%</span></div>';` +
+		`<div class="hf-dl-bar" style="position:absolute;top:0;left:0;height:100%;width:0%;background:var(--mass-accent-soft);transition:width .3s"></div>` +
+		`<span class="hf-dl-pct" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:100%;font-size:0.75rem;font-weight:600;color:var(--mass-text)">0%</span></div>';` +
 		`});` +
 		`fetch(dlURL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repo_id:repo,filename:file})});` +
 		`};` +
