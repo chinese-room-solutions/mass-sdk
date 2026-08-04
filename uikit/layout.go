@@ -18,7 +18,43 @@ import (
 // pages reached through a path-rewriting proxy, use LayoutUnder instead; for a
 // page that needs its own <head> content, LayoutHead.
 func Layout(title, body string, theme Theme) string {
-	return layout("", "", title, body, theme)
+	return LayoutWith(Options{}, title, body, theme)
+}
+
+// Options are the parts of a page that are not the page: where its assets are
+// served from, what else belongs in its <head>, and what language it is in. The
+// zero value is what Layout produces.
+type Options struct {
+	// PathPrefix is prepended to every asset URL, for pages served behind a
+	// path-rewriting proxy — see LayoutUnder.
+	PathPrefix string
+	// Head is written into <head> verbatim, so the caller escapes it — see
+	// LayoutHead.
+	Head string
+	// Lang is the document's language as a BCP 47 tag ("en", "de", "pt-BR").
+	// Empty means English.
+	//
+	// It is not decoration: it decides how a screen reader pronounces the page,
+	// where a browser hyphenates it, which dictionary spellchecks a field in it,
+	// and which audience a search engine offers it to. A page whose text is not
+	// English and whose lang says otherwise is worse than one with no lang at
+	// all.
+	Lang string
+}
+
+// lang is the tag to write, defaulting to English.
+func (o Options) lang() string {
+	if o.Lang == "" {
+		return "en"
+	}
+	return o.Lang
+}
+
+// LayoutWith is Layout with every option spelled out. The three named variants
+// are the common cases; this is the one to reach for when a page needs more than
+// one of them at once — a non-English page with its own <head>, say.
+func LayoutWith(opts Options, title, body string, theme Theme) string {
+	return layout(opts, title, body, theme)
 }
 
 // LayoutHead is Layout with head appended to the document's <head>: canonical
@@ -30,7 +66,7 @@ func Layout(title, body string, theme Theme) string {
 // never requests an icon that isn't there). A browser takes the first icon link
 // it can use, so an icon named here wins and the placeholder stays a fallback.
 func LayoutHead(head, title, body string, theme Theme) string {
-	return layout("", head, title, body, theme)
+	return LayoutWith(Options{Head: head}, title, body, theme)
 }
 
 // LayoutUnder is Layout for pages served behind a path-rewriting proxy:
@@ -39,10 +75,11 @@ func LayoutHead(head, title, body string, theme Theme) string {
 // AssetsHandler, which still mounts at the unprefixed AssetsPath — the proxy
 // strips pathPrefix before the request reaches the app's mux.
 func LayoutUnder(pathPrefix, title, body string, theme Theme) string {
-	return layout(pathPrefix, "", title, body, theme)
+	return LayoutWith(Options{PathPrefix: pathPrefix}, title, body, theme)
 }
 
-func layout(pathPrefix, head, title, body string, theme Theme) string {
+func layout(opts Options, title, body string, theme Theme) string {
+	pathPrefix, head := opts.PathPrefix, opts.Head
 	info, ok := LookupTheme(string(theme))
 	if !ok {
 		info, _ = LookupTheme(string(ThemeDark))
@@ -56,7 +93,7 @@ func layout(pathPrefix, head, title, body string, theme Theme) string {
 		themesStyle = "<style>" + css + "</style>"
 	}
 	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="en" class="%[2]s" data-theme="%[14]s" data-os="%[13]s">
+<html lang="%[16]s" class="%[2]s" data-theme="%[14]s" data-os="%[13]s">
 <head>
 	<meta charset="UTF-8"/>
 	<!-- Critical background, first thing in <head>: the external Shoelace
@@ -133,5 +170,5 @@ func layout(pathPrefix, head, title, body string, theme Theme) string {
 <body class="%[2]s min-h-screen">
 	%[8]s
 </body>
-</html>`, pathPrefix+AssetsPath(), themeClass, title, ThemeCSS, StateJS, AlertJS, ThemeJS, body, scheme, bgColor, themesStyle, ThemesJSON(), runtime.GOOS, string(info.Name), head)
+</html>`, pathPrefix+AssetsPath(), themeClass, title, ThemeCSS, StateJS, AlertJS, ThemeJS, body, scheme, bgColor, themesStyle, ThemesJSON(), runtime.GOOS, string(info.Name), head, opts.lang())
 }
