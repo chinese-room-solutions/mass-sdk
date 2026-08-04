@@ -15,9 +15,22 @@ import (
 //
 // Asset URLs are root-absolute (AssetsPath), so the app must serve
 // AssetsHandler on the same origin the page loads from (MountAssets). For
-// pages reached through a path-rewriting proxy, use LayoutUnder instead.
+// pages reached through a path-rewriting proxy, use LayoutUnder instead; for a
+// page that needs its own <head> content, LayoutHead.
 func Layout(title, body string, theme Theme) string {
-	return LayoutUnder("", title, body, theme)
+	return layout("", "", title, body, theme)
+}
+
+// LayoutHead is Layout with head appended to the document's <head>: canonical
+// links, a meta description, structured data — whatever a crawler or a link
+// preview reads and a webview app has no use for. It is written into the
+// document verbatim, so the caller escapes it.
+//
+// It lands above the empty favicon link Layout emits (which exists so a webview
+// never requests an icon that isn't there). A browser takes the first icon link
+// it can use, so an icon named here wins and the placeholder stays a fallback.
+func LayoutHead(head, title, body string, theme Theme) string {
+	return layout("", head, title, body, theme)
 }
 
 // LayoutUnder is Layout for pages served behind a path-rewriting proxy:
@@ -26,6 +39,10 @@ func Layout(title, body string, theme Theme) string {
 // AssetsHandler, which still mounts at the unprefixed AssetsPath — the proxy
 // strips pathPrefix before the request reaches the app's mux.
 func LayoutUnder(pathPrefix, title, body string, theme Theme) string {
+	return layout(pathPrefix, "", title, body, theme)
+}
+
+func layout(pathPrefix, head, title, body string, theme Theme) string {
 	info, ok := LookupTheme(string(theme))
 	if !ok {
 		info, _ = LookupTheme(string(ThemeDark))
@@ -104,6 +121,7 @@ func LayoutUnder(pathPrefix, title, body string, theme Theme) string {
 		}
 		reveal();
 	</script>
+	%[15]s
 	<link rel="icon" href="data:,"/>
 	<style>%[4]s</style>
 	%[11]s
@@ -115,5 +133,5 @@ func LayoutUnder(pathPrefix, title, body string, theme Theme) string {
 <body class="%[2]s min-h-screen">
 	%[8]s
 </body>
-</html>`, pathPrefix+AssetsPath(), themeClass, title, ThemeCSS, StateJS, AlertJS, ThemeJS, body, scheme, bgColor, themesStyle, ThemesJSON(), runtime.GOOS, string(info.Name))
+</html>`, pathPrefix+AssetsPath(), themeClass, title, ThemeCSS, StateJS, AlertJS, ThemeJS, body, scheme, bgColor, themesStyle, ThemesJSON(), runtime.GOOS, string(info.Name), head)
 }

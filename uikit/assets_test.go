@@ -41,6 +41,21 @@ func TestLayoutUnderPrefixesAssetURLs(t *testing.T) {
 		"no asset reference may bypass the proxy prefix")
 }
 
+// LayoutHead's content has to land inside <head>, and above the placeholder
+// favicon: a browser takes the first icon link it can use, so an icon supplied
+// here must come first or the placeholder wins and the tab stays blank.
+func TestLayoutHeadLandsInHead(t *testing.T) {
+	const head = `<link rel="canonical" href="https://example.com/"><link rel="icon" href="/i.ico">`
+	page := LayoutHead(head, "Title", "<p>body</p>", "dark")
+
+	require.Contains(t, page, head)
+	require.Less(t, strings.Index(page, head), strings.Index(page, "</head>"))
+	require.Less(t, strings.Index(page, head), strings.Index(page, `<link rel="icon" href="data:,"/>`))
+
+	// The other two entry points must not grow a stray slot.
+	require.NotContains(t, Layout("Title", "<p>body</p>", "dark"), head)
+}
+
 func TestAssetsHandlerServesUnderHashedPrefix(t *testing.T) {
 	mux := http.NewServeMux()
 	MountAssets(mux)
