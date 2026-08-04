@@ -174,11 +174,16 @@ html:not(.sl-theme-light) {
    Scoped away from overlay themes, which inherit the block above: a theme that
    keeps deep fills would otherwise get dark ink on them and turn unreadable,
    and editing each theme file cannot fix the copies already installed on disk.
-   HTMLClass() emits "sl-theme-dark" alone for Carbon and "sl-theme-dark
-   sl-theme-<name>" for an overlay, so a second " sl-theme-" token is what
-   tells them apart without naming any theme. */
-html.sl-theme-dark:not([class*=" sl-theme-"]),
-html:not(.sl-theme-light):not([class*=" sl-theme-"]) {
+   data-theme names the active theme exactly — Layout writes it and massSetTheme
+   keeps it current — so an overlay is told apart by name rather than by counting
+   theme classes. It was counted here once, as a second " sl-theme-" token in the
+   class attribute, and that reads class *order*: a live switch re-adds the
+   classes, which can leave sl-theme-dark no longer first, and Carbon silently
+   lost its fills. The second selector is a document not built by Layout, which
+   has no attribute to read and defaults to dark like the block above.
+   Same specificity as that block, so this one must stay below it. */
+html[data-theme="dark"],
+html:not([data-theme]):not(.sl-theme-light) {
   --mass-accent-fill:  var(--mass-accent);
   --mass-success-fill: var(--mass-success);
   --mass-warning-fill: var(--mass-warning);
