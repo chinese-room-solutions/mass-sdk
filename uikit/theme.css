@@ -455,6 +455,27 @@ sl-dialog.mass-dialog {
   --footer-spacing: var(--sl-spacing-medium);
 }
 
+/* ── Alerts ──────────────────────────────────────────────────────────── */
+/* Shoelace paints alerts from its own neutral scale, so an untouched one     */
+/* reads as a grey card dropped on a themed page. Repaint the panel from the  */
+/* MASS tokens and drive the accent — the 3px top edge and the icon — off the */
+/* variant. Covers toasts (massToast), inline alerts (RenderAlert), and any   */
+/* hand-written sl-alert.                                                      */
+sl-alert                    { --mass-alert-accent: var(--mass-accent); }
+sl-alert[variant="success"] { --mass-alert-accent: var(--mass-success); }
+sl-alert[variant="neutral"] { --mass-alert-accent: var(--mass-text-muted); }
+sl-alert[variant="warning"] { --mass-alert-accent: var(--mass-warning); }
+sl-alert[variant="danger"]  { --mass-alert-accent: var(--mass-danger); }
+sl-alert::part(base) {
+  background-color: var(--mass-bg-panel);
+  border-color: var(--mass-border);
+  border-top-color: var(--mass-alert-accent);
+  color: var(--mass-text);
+}
+sl-alert::part(icon) { color: var(--mass-alert-accent); }
+sl-alert::part(close-button__base) { color: var(--mass-text-muted); }
+sl-alert::part(close-button__base):hover { color: var(--mass-text); }
+
 /* ── Badges ──────────────────────────────────────────────────────────── */
 /* Generic badges driven by --mass-badge-* variables (light/dark aware).   */
 .mass-badge     { background: var(--mass-badge-bg)     !important; color: var(--mass-badge-text)     !important; }
