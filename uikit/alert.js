@@ -1,3 +1,7 @@
+// Notices, in two weights: massAlert for something the user must acknowledge
+// before anything else happens, massToast for something they can read and
+// ignore. Both are Shoelace-styled and self-contained.
+//
 // massAlert — Shoelace-styled replacement for window.alert.
 // Self-contained: lazily injects a single <sl-dialog> on first call and
 // reuses it for every subsequent message. Returns a Promise that resolves
@@ -81,6 +85,45 @@
       resolveFn = resolve;
       dialog.show();
     });
+  };
+
+  // massToast — transient notice in the page corner (Shoelace's toast stack).
+  // Doesn't block the page and clears itself, so it fits a background action
+  // reporting how it went; use massAlert when the user has to answer for it.
+  // Returns a Promise that resolves once the toast has gone.
+  //
+  //   window.massToast("Kernel installed", { variant: "success" });
+  //   window.massToast(window.massErrorText(body), { variant: "danger" });
+  //
+  // Options:
+  //   variant  — primary | success | neutral | warning | danger (default: primary)
+  //   icon     — Shoelace icon name              (default: per variant)
+  //   duration — ms on screen                    (default: 6000)
+  var TOAST_ICONS = {
+    primary: "info-circle",
+    success: "check2-circle",
+    neutral: "info-circle",
+    warning: "exclamation-triangle",
+    danger: "exclamation-octagon",
+  };
+
+  window.massToast = function (message, opts) {
+    opts = opts || {};
+    var variant = opts.variant || "primary";
+    var alert = Object.assign(document.createElement("sl-alert"), {
+      variant: variant,
+      closable: true,
+      duration: opts.duration == null ? 6000 : opts.duration,
+    });
+    var icon = document.createElement("sl-icon");
+    icon.setAttribute("slot", "icon");
+    icon.setAttribute("name", opts.icon || TOAST_ICONS[variant] || TOAST_ICONS.primary);
+    alert.appendChild(icon);
+    alert.appendChild(document.createTextNode(String(message == null ? "" : message)));
+    document.body.appendChild(alert);
+    // The autoloader registers sl-alert lazily, so .toast() may not exist yet
+    // on first use; wait for the definition before calling it.
+    return customElements.whenDefined("sl-alert").then(function () { return alert.toast(); });
   };
 
   // Extract a user-facing message from a server response body. MASS APIs
