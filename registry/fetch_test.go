@@ -162,3 +162,37 @@ func TestFetchCacheKeyIsolation(t *testing.T) {
 	require.NotEqual(t, b1, b2)
 	require.Equal(t, dir, filepath.Dir(b1))
 }
+
+func TestCachedIndex(t *testing.T) {
+	srv, fullServes := indexServer(t)
+	dir := t.TempDir()
+	c := NewClient(srv.URL, dir)
+
+	// Nothing fetched yet: a distinguishable sentinel, no network touched.
+	_, err := c.CachedIndex()
+	require.ErrorIs(t, err, ErrNoCache)
+	require.EqualValues(t, 0, atomic.LoadInt32(fullServes))
+
+	_, err = c.Fetch(context.Background())
+	require.NoError(t, err)
+	require.EqualValues(t, 1, atomic.LoadInt32(fullServes))
+
+	// Served from disk, with the server closed so any request would fail.
+	srv.Close()
+	idx, err := c.CachedIndex()
+	require.NoError(t, err)
+	require.Len(t, idx.Packages, 3)
+	require.EqualValues(t, 1, atomic.LoadInt32(fullServes))
+}
+
+func TestCachedIndexCorrupt(t *testing.T) {
+	dir := t.TempDir()
+	c := NewClient("https://example.test/index.yml", dir)
+	bodyPath, _ := c.cachePaths()
+	require.NoError(t, os.WriteFile(bodyPath, []byte("schema_version: 99\npackages: []\n"), 0o600))
+
+	// A cache that exists but is not a usable index is not "no cache".
+	_, err := c.CachedIndex()
+	require.ErrorIs(t, err, ErrUnsupportedSchema)
+	require.NotErrorIs(t, err, ErrNoCache)
+}

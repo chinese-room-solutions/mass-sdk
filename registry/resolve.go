@@ -36,6 +36,10 @@ func (p Platform) Key() string {
 	return p.OS + "/" + p.Arch + "/" + p.Backend
 }
 
+// AnyArtifactKey is the artifact map key of a package that ships one asset for
+// every platform.
+const AnyArtifactKey = "any"
+
 // Resolved is a successful resolution: the chosen version and the artifact for
 // the requested platform.
 type Resolved struct {
@@ -105,7 +109,7 @@ func (idx *Index) ResolveRuntime(name string, platform Platform, massVersion str
 			map[string]any{"name": name, "kind": pkg.Kind},
 		)
 	}
-	return resolve(pkg, platform, versionRange{
+	return resolve(pkg, platform.Key(), versionRange{
 		label:   "mass",
 		version: massVersion,
 		rangeOf: massRange,
@@ -129,10 +133,41 @@ func (idx *Index) ResolveWorker(name string, platform Platform, runtimeVersion, 
 			map[string]any{"name": name, "kind": pkg.Kind},
 		)
 	}
-	return resolve(pkg, platform,
+	return resolve(pkg, platform.Key(),
 		versionRange{label: "runtime", version: runtimeVersion, rangeOf: func(v Version) string { return v.Runtime }},
 		versionRange{label: "mass", version: massVersion, rangeOf: massRange, allowEmpty: true},
 	)
+}
+
+// ResolveForGrimoire resolves a package consumed by a Grimoire host: among the
+// versions carrying an artifact under AnyArtifactKey, it picks the newest whose
+// grimoire range covers grimoireVersion. An empty grimoire range means no
+// Grimoire constraint. It is kind-agnostic — the caller has already picked the
+// package it wants. requestedVersion, when non-empty, pins the choice: the
+// newest compatible version is resolved and then asserted to equal it, so a pin
+// naming an unknown or incompatible version fails instead of silently
+// installing another.
+func (idx *Index) ResolveForGrimoire(name, grimoireVersion, requestedVersion string) (*Resolved, error) {
+	pkg := idx.FindPackage(name)
+	if pkg == nil {
+		return nil, ctxerr.With(fmt.Errorf("%w: no package %q", ErrNotResolved, name), map[string]any{"name": name})
+	}
+	resolved, err := resolve(pkg, AnyArtifactKey, versionRange{
+		label:      "grimoire",
+		version:    grimoireVersion,
+		rangeOf:    func(v Version) string { return v.Grimoire },
+		allowEmpty: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if requestedVersion != "" && resolved.Version.Version != requestedVersion {
+		return nil, ctxerr.With(
+			fmt.Errorf("%w: %s has no version %q for grimoire %s", ErrNotResolved, name, requestedVersion, grimoireVersion),
+			map[string]any{"package": name, "version": requestedVersion, "grimoire": grimoireVersion},
+		)
+	}
+	return resolved, nil
 }
 
 // versionRange is one semver constraint a version must satisfy to be a
@@ -151,8 +186,8 @@ type versionRange struct {
 func massRange(v Version) string { return v.Mass }
 
 // resolve implements the README rule: among versions of pkg that have an
-// artifact for platform and satisfy every range, pick the newest by semver.
-func resolve(pkg *Package, platform Platform, ranges ...versionRange) (*Resolved, error) {
+// artifact under key and satisfy every range, pick the newest by semver.
+func resolve(pkg *Package, key string, ranges ...versionRange) (*Resolved, error) {
 	parsed := make([]*semver.Version, len(ranges))
 	for i, r := range ranges {
 		installed, err := semver.NewVersion(r.version)
@@ -164,7 +199,6 @@ func resolve(pkg *Package, platform Platform, ranges ...versionRange) (*Resolved
 		}
 		parsed[i] = installed
 	}
-	key := platform.Key()
 
 	candidates := make([]*Version, 0, len(pkg.Versions))
 	for i := range pkg.Versions {

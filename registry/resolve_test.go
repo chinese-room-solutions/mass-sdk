@@ -367,3 +367,132 @@ func TestSearch(t *testing.T) {
 		})
 	}
 }
+
+// grimoireIndexYAML exercises the grimoire range: packages whose single
+// artifact is keyed "any", one version with no range at all (unconstrained),
+// one that only a newer host satisfies, one carrying no "any" artifact, and one
+// with an unparseable range.
+const grimoireIndexYAML = `
+schema_version: 1
+packages:
+  - name: mass-theme-synthwave
+    kind: theme
+    versions:
+      - version: 0.1.0
+        artifacts:
+          any: {url: https://example.test/theme_0.1.0.css, sha256: aaaa}
+      - version: 0.1.1
+        artifacts:
+          any: {url: https://example.test/theme_0.1.1.css, sha256: bbbb}
+  - name: ranged-package
+    kind: tool
+    versions:
+      - version: 0.1.0
+        grimoire: ">=0.1 <0.2"
+        artifacts:
+          any: {url: https://example.test/ranged_0.1.0.zip, sha256: cccc}
+      - version: 0.2.0
+        grimoire: ">=0.2"
+        artifacts:
+          any: {url: https://example.test/ranged_0.2.0.zip, sha256: dddd}
+      - version: 0.3.0
+        grimoire: ">=0.2"
+        artifacts:
+          linux/amd64: {url: https://example.test/ranged_0.3.0.zip, sha256: eeee}
+  - name: broken-range-package
+    kind: tool
+    versions:
+      - version: 0.1.0
+        grimoire: "not a range"
+        artifacts:
+          any: {url: https://example.test/broken.zip, sha256: ffff}
+`
+
+func TestResolveForGrimoire(t *testing.T) {
+	idx, err := ParseIndex([]byte(grimoireIndexYAML))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		pkg         string
+		grimoire    string
+		requested   string
+		wantVersion string
+		wantErr     bool
+		plainErr    bool // wantErr but not the ErrNotResolved sentinel
+	}{
+		{
+			name:        "no range is unconstrained, newest wins",
+			pkg:         "mass-theme-synthwave",
+			grimoire:    "0.9.0",
+			wantVersion: "0.1.1",
+		},
+		{
+			name:        "grimoire 0.1 gets the 0.1 range only",
+			pkg:         "ranged-package",
+			grimoire:    "0.1.4",
+			wantVersion: "0.1.0",
+		},
+		{
+			name:        "0.3.0 has no any artifact, so 0.2 hosts get 0.2.0",
+			pkg:         "ranged-package",
+			grimoire:    "0.2.0",
+			wantVersion: "0.2.0",
+		},
+		{
+			name:     "no version covers grimoire 0.0.1",
+			pkg:      "ranged-package",
+			grimoire: "0.0.1",
+			wantErr:  true,
+		},
+		{
+			name:        "requested version matches the resolution",
+			pkg:         "mass-theme-synthwave",
+			grimoire:    "0.2.0",
+			requested:   "0.1.1",
+			wantVersion: "0.1.1",
+		},
+		{
+			name:      "requested version is not the compatible one",
+			pkg:       "ranged-package",
+			grimoire:  "0.2.0",
+			requested: "0.1.0",
+			wantErr:   true,
+		},
+		{
+			name:     "unknown package",
+			pkg:      "nope",
+			grimoire: "0.1.0",
+			wantErr:  true,
+		},
+		{
+			name:     "unparseable range is fatal",
+			pkg:      "broken-range-package",
+			grimoire: "0.1.0",
+			wantErr:  true,
+			plainErr: true,
+		},
+		{
+			name:     "unparseable host version",
+			pkg:      "mass-theme-synthwave",
+			grimoire: "bad",
+			wantErr:  true,
+			plainErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := idx.ResolveForGrimoire(tt.pkg, tt.grimoire, tt.requested)
+			if tt.wantErr {
+				require.Error(t, err)
+				if !tt.plainErr {
+					require.ErrorIs(t, err, ErrNotResolved)
+				}
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.wantVersion, res.Version.Version)
+			require.Equal(t, res.Version.Artifacts[AnyArtifactKey], res.Artifact)
+		})
+	}
+}

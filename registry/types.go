@@ -14,7 +14,8 @@ import (
 // SchemaVersion is the only index schema version this client understands.
 const SchemaVersion = 1
 
-// Kind is a package kind.
+// Kind is a package kind. It is an open string: consumers declare the kinds
+// they install, and a kind this client does not know is not an error.
 type Kind string
 
 const (
@@ -47,12 +48,15 @@ type Package struct {
 // Mass is a range over MASS server versions this version works with — required
 // on runtime versions, optional on worker versions (empty means unconstrained).
 // Runtime is set on worker versions only: a range over runtime versions whose
-// payloads the worker decodes. Artifacts is keyed by platform: os/arch for
-// runtimes, os/arch/backend for workers.
+// payloads the worker decodes. Grimoire is a range over Grimoire core versions
+// this version works with (empty means unconstrained). Artifacts is keyed by
+// platform: os/arch for runtimes, os/arch/backend for workers, "any" for
+// packages that ship one platform-independent asset.
 type Version struct {
 	Version   string              `yaml:"version"`
 	Mass      string              `yaml:"mass,omitempty"`
 	Runtime   string              `yaml:"runtime,omitempty"`
+	Grimoire  string              `yaml:"grimoire,omitempty"`
 	Artifacts map[string]Artifact `yaml:"artifacts"`
 }
 
