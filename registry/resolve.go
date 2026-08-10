@@ -152,22 +152,41 @@ func (idx *Index) ResolveForGrimoire(name, grimoireVersion, requestedVersion str
 	if pkg == nil {
 		return nil, ctxerr.With(fmt.Errorf("%w: no package %q", ErrNotResolved, name), map[string]any{"name": name})
 	}
-	resolved, err := resolve(pkg, AnyArtifactKey, versionRange{
+	// A pin selects its row directly rather than asserting against newest —
+	// consumers keep versions side by side (grimoire kernel families) — but the
+	// pinned row still needs the artifact and an admitting grimoire range.
+	if requestedVersion != "" {
+		pinned := *pkg
+		pinned.Versions = nil
+		for _, v := range pkg.Versions {
+			if v.Version == requestedVersion {
+				pinned.Versions = append(pinned.Versions, v)
+			}
+		}
+		if len(pinned.Versions) == 0 {
+			return nil, ctxerr.With(
+				fmt.Errorf("%w: %s has no version %q", ErrNotResolved, name, requestedVersion),
+				map[string]any{"package": name, "version": requestedVersion},
+			)
+		}
+		resolved, err := resolve(&pinned, AnyArtifactKey, versionRange{
+			label:      "grimoire",
+			version:    grimoireVersion,
+			rangeOf:    func(v Version) string { return v.Grimoire },
+			allowEmpty: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		resolved.Package = pkg
+		return resolved, nil
+	}
+	return resolve(pkg, AnyArtifactKey, versionRange{
 		label:      "grimoire",
 		version:    grimoireVersion,
 		rangeOf:    func(v Version) string { return v.Grimoire },
 		allowEmpty: true,
 	})
-	if err != nil {
-		return nil, err
-	}
-	if requestedVersion != "" && resolved.Version.Version != requestedVersion {
-		return nil, ctxerr.With(
-			fmt.Errorf("%w: %s has no version %q for grimoire %s", ErrNotResolved, name, requestedVersion, grimoireVersion),
-			map[string]any{"package": name, "version": requestedVersion, "grimoire": grimoireVersion},
-		)
-	}
-	return resolved, nil
 }
 
 // versionRange is one semver constraint a version must satisfy to be a

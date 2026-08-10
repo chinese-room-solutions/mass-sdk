@@ -460,6 +460,20 @@ func TestResolveForGrimoire(t *testing.T) {
 			wantErr:   true,
 		},
 		{
+			name:        "requested older version installs beside the newest",
+			pkg:         "mass-theme-synthwave",
+			grimoire:    "0.9.0",
+			requested:   "0.1.0",
+			wantVersion: "0.1.0",
+		},
+		{
+			name:      "requested version without the artifact",
+			pkg:       "ranged-package",
+			grimoire:  "0.2.0",
+			requested: "0.3.0",
+			wantErr:   true,
+		},
+		{
 			name:     "unknown package",
 			pkg:      "nope",
 			grimoire: "0.1.0",
