@@ -14,6 +14,10 @@ package webview
 // is only valid for the duration of the call (the Go side copies it).
 extern void goOpenExternal(char *uri);
 
+// goShouldOpenExternal applies the shared rule in webview_nav.go: true when
+// the URI leaves the app's origin for a scheme the OS should handle.
+extern int goShouldOpenExternal(char *uri, char *origin);
+
 // The page served from the app's local origin IS the UI: following an
 // external link in-window would replace the app with a remote site and
 // strand the user there (a bare webview has no browser chrome to come back
@@ -21,10 +25,6 @@ extern void goOpenExternal(char *uri);
 // the OS browser instead, covering both in-place navigations (target=_self)
 // and new-window requests (target=_blank, which a bare webview would
 // otherwise silently drop).
-//
-// Only http(s) to a foreign origin and mailto are redirected. Same-origin
-// navigations and non-web schemes (about:, data:, blob: — in-page mechanics)
-// keep WebKit's default handling.
 static gboolean onDecidePolicy(WebKitWebView *web_view,
                                WebKitPolicyDecision *decision,
                                WebKitPolicyDecisionType type,
@@ -37,13 +37,7 @@ static gboolean onDecidePolicy(WebKitWebView *web_view,
 		WEBKIT_NAVIGATION_POLICY_DECISION(decision));
 	WebKitURIRequest *req = webkit_navigation_action_get_request(action);
 	const gchar *uri = req != NULL ? webkit_uri_request_get_uri(req) : NULL;
-	if (uri == NULL || g_str_has_prefix(uri, (const gchar *)origin)) {
-		return FALSE;
-	}
-	gboolean external = g_str_has_prefix(uri, "http://") ||
-	                    g_str_has_prefix(uri, "https://") ||
-	                    g_str_has_prefix(uri, "mailto:");
-	if (!external) {
+	if (uri == NULL || !goShouldOpenExternal((char *)uri, (char *)origin)) {
 		return FALSE;
 	}
 	webkit_policy_decision_ignore(decision);
@@ -74,6 +68,14 @@ import (
 	"os/exec"
 	"unsafe"
 )
+
+//export goShouldOpenExternal
+func goShouldOpenExternal(uri, origin *C.char) C.int {
+	if shouldOpenExternally(C.GoString(uri), C.GoString(origin)) {
+		return 1
+	}
+	return 0
+}
 
 //export goOpenExternal
 func goOpenExternal(uri *C.char) {

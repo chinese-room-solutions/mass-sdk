@@ -10,11 +10,13 @@
 // implementations on all three OSes; on any other platform they return
 // ErrUnsupported.
 //
-// The window is pinned to the app's own pages: on Linux, link clicks and
-// window.open targets that leave the app's origin (http(s) elsewhere, mailto)
-// open in the OS default browser instead of replacing the UI — a bare webview
-// has no chrome to navigate back with. Windows and macOS don't intercept
-// external navigations yet and keep their engines' default behavior.
+// The window is pinned to the app's own pages: link clicks and window.open
+// targets that leave the app's origin (http(s) elsewhere, mailto) open in the
+// OS default browser instead of replacing the UI — a bare webview has no
+// chrome to navigate back with. Linux and macOS enforce this in the engine
+// (the WebKitGTK policy decision and a WKNavigationDelegate); Windows does it
+// with an injected link shim, because go-webview2 exposes no navigation
+// events.
 package webview
 
 import "errors"

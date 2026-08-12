@@ -60,6 +60,13 @@ func Open(opts Options) WindowInterface {
 		setWindowIcon(w.hwnd, opts.IconPNG)
 	}
 
+	// Keep the window on the app's own pages: navigations leaving the app
+	// origin open in the OS browser instead of replacing the UI. Must precede
+	// Navigate — the hook is injected into pages loaded after it.
+	if origin := originPrefix(opts.URL); origin != "" {
+		installExternalNavHook(wv, origin)
+	}
+
 	wv.Navigate(opts.URL)
 	return w
 }
