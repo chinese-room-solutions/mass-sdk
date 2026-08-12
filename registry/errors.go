@@ -9,6 +9,9 @@ var (
 	// ErrNotResolved is returned when no version both covers the installed
 	// version and has an artifact for the requested platform.
 	ErrNotResolved = errors.New("no compatible version with an artifact for the platform")
+	// ErrNoCache is returned by CachedIndex when no index has been cached yet,
+	// distinguishing "nothing fetched" from an unreadable cached index.
+	ErrNoCache = errors.New("no cached index")
 	// ErrChecksumMismatch is returned when a downloaded artifact's sha256 does
 	// not match the digest pinned in the index.
 	ErrChecksumMismatch = errors.New("artifact checksum mismatch")

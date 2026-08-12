@@ -3,7 +3,6 @@
 package webview
 
 import (
-	"net/url"
 	"os"
 	"runtime"
 	"sync"
@@ -50,23 +49,11 @@ func Open(opts Options) WindowInterface {
 	w.Navigate(opts.URL)
 	n := &nativeWindow{wv: w, handle: w.Window(), visible: true}
 	// Keep the window on the app's own pages: navigations leaving the app
-	// origin open in the OS browser instead of replacing the UI (real on
-	// Linux; a no-op on macOS for now).
+	// origin open in the OS browser instead of replacing the UI.
 	if origin := originPrefix(opts.URL); origin != "" {
 		w.Dispatch(func() { installExternalNavHook(n.handle, origin) })
 	}
 	return n
-}
-
-// originPrefix reduces the app URL to its "scheme://host:port/" prefix — the
-// boundary the external-navigation hook matches against. Empty (hook skipped)
-// when the URL is not a usable web origin.
-func originPrefix(rawURL string) string {
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return ""
-	}
-	return u.Scheme + "://" + u.Host + "/"
 }
 
 func (w *nativeWindow) Run()       { w.wv.Run() }

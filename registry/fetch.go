@@ -139,6 +139,19 @@ func (c *Client) Fetch(ctx context.Context) (*FetchResult, error) {
 	}
 }
 
+// CachedIndex returns the index from the on-disk cache without any network I/O,
+// for callers that must not block on the network (the hub's Register compat
+// check). It returns ErrNoCache when nothing has been fetched yet, and a parse
+// error when the cached copy is unreadable as an index.
+func (c *Client) CachedIndex() (*Index, error) {
+	bodyPath, _ := c.cachePaths()
+	data, err := os.ReadFile(bodyPath)
+	if err != nil {
+		return nil, ctxerr.With(fmt.Errorf("%w: %s", ErrNoCache, bodyPath), map[string]any{"url": c.url, "path": bodyPath})
+	}
+	return ParseIndex(data)
+}
+
 // fetchUnconditional re-fetches without an If-None-Match header. Used when the
 // server returns 304 but the local cache has vanished.
 func (c *Client) fetchUnconditional(ctx context.Context) (*FetchResult, error) {
