@@ -99,6 +99,9 @@
   //   variant  — primary | success | neutral | warning | danger (default: primary)
   //   icon     — Shoelace icon name              (default: per variant)
   //   duration — ms on screen                    (default: 6000)
+  //   action   — { label, onClick } offers the notice's follow-up in the toast
+  //              itself (e.g. an update's "Install"). The toast hides before
+  //              onClick runs, so the handler's own toasts don't stack under it.
   var TOAST_ICONS = {
     primary: "info-circle",
     success: "check2-circle",
@@ -120,6 +123,17 @@
     icon.setAttribute("name", opts.icon || TOAST_ICONS[variant] || TOAST_ICONS.primary);
     alert.appendChild(icon);
     alert.appendChild(document.createTextNode(String(message == null ? "" : message)));
+    if (opts.action && opts.action.label) {
+      var act = document.createElement("sl-button");
+      act.size = "small";
+      act.style.marginLeft = "0.75em";
+      act.textContent = String(opts.action.label);
+      act.addEventListener("click", function () {
+        alert.hide();
+        if (typeof opts.action.onClick === "function") opts.action.onClick();
+      });
+      alert.appendChild(act);
+    }
     document.body.appendChild(alert);
     // The autoloader registers sl-alert lazily, so .toast() may not exist yet
     // on first use; wait for the definition before calling it.
