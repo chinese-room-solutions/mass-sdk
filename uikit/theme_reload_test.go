@@ -12,8 +12,9 @@ import (
 // ParseTheme re-reads the shared dir on an unknown non-empty name, so a
 // long-running module process (runtime gateway) picks up live installs.
 func TestParseThemeReloadsOnUnknownName(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	pointConfigDirAtTemp(t)
 	t.Cleanup(resetLoadedThemes)
+	resetLoadedThemes()
 
 	require.NoError(t, LoadThemes())
 	_, ok := LookupTheme("late-arrival")
