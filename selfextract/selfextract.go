@@ -44,8 +44,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
+
+	"github.com/chinese-room-solutions/mass-sdk/fsutil"
 )
 
 // magic = a 7-byte family prefix + a one-byte format generation. The prefix
@@ -255,30 +256,18 @@ func readEntryHeader(f io.ReaderAt, off, end int64) (entry, error) {
 }
 
 // extractEntry decompresses e's gzip stream out to dstDir/name. The name must be
-// a flat leaf — a separator or ':' (Windows ADS) is rejected. The bytes land in a
-// sibling temp file that is renamed into place only once the stream decodes
-// whole, so a corrupt payload never leaves a truncated binary behind under the
-// real name.
-func extractEntry(f io.ReaderAt, e entry, dstDir string) (err error) {
+// a flat leaf — a separator or ':' (Windows ADS) is rejected. fsutil.WriteAtomic
+// puts the bytes in a sibling temp file and renames it into place, so a corrupt
+// payload never leaves a truncated binary behind under the real name and an
+// upgrade extracting over a still-running install replaces rather than truncates.
+//
+// Mode 0755: the payload is the app executable + shared libraries, both of which
+// need the execute bit (a non-executable binary fails to launch). On Windows
+// perms are ACL-governed so the mode is a best-effort no-op.
+func extractEntry(f io.ReaderAt, e entry, dstDir string) error {
 	if strings.ContainsAny(e.name, `/\:`) {
 		return fmt.Errorf("selfextract: unsafe payload entry name: %q", e.name)
 	}
-	dst := filepath.Join(dstDir, e.name)
-	tmp := filepath.Join(dstDir, "."+e.name+".part")
-
-	// 0755: the payload is the app executable + shared libraries, both of which
-	// need the execute bit (a non-executable binary fails to launch). On Windows
-	// perms are ACL-governed so the mode is a best-effort no-op.
-	out, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
-	if err != nil {
-		return fmt.Errorf("selfextract: opening %s: %w", tmp, err)
-	}
-	defer func() {
-		if err != nil {
-			_ = out.Close()
-			_ = os.Remove(tmp) // best-effort: leave nothing half-written behind
-		}
-	}()
 
 	src := bufio.NewReaderSize(io.NewSectionReader(f, e.dataOff, int64(e.compSize)), bufSize)
 	zr, err := gzip.NewReader(src)
@@ -286,28 +275,19 @@ func extractEntry(f io.ReaderAt, e entry, dstDir string) (err error) {
 		return fmt.Errorf("selfextract: reading %s: %w", e.name, err)
 	}
 	zr.Multistream(false) // exactly one stream per record
-	n, err := io.Copy(out, zr)
-	if err != nil {
-		return fmt.Errorf("selfextract: extracting %s: %w", e.name, err)
-	}
-	if err = zr.Close(); err != nil {
-		return fmt.Errorf("selfextract: extracting %s: %w", e.name, err)
-	}
-	if uint64(n) != e.rawSize {
-		return fmt.Errorf("selfextract: %s: expected %d bytes, decompressed %d", e.name, e.rawSize, n)
-	}
-	// Re-assert the mode: O_CREATE's 0755 is filtered by the process umask (no-op
-	// on Windows).
-	if runtime.GOOS != "windows" {
-		if err = os.Chmod(tmp, 0o755); err != nil {
-			return fmt.Errorf("selfextract: setting mode on %s: %w", e.name, err)
+
+	dst := filepath.Join(dstDir, e.name)
+	verify := func(n int64) error {
+		if err := zr.Close(); err != nil { // gzip CRC/ISIZE trailer
+			return err
 		}
+		if uint64(n) != e.rawSize {
+			return fmt.Errorf("expected %d bytes, decompressed %d", e.rawSize, n)
+		}
+		return nil
 	}
-	if err = out.Close(); err != nil {
-		return fmt.Errorf("selfextract: closing %s: %w", tmp, err)
-	}
-	if err = os.Rename(tmp, dst); err != nil {
-		return fmt.Errorf("selfextract: writing %s: %w", dst, err)
+	if _, err := fsutil.WriteAtomic(dst, zr, 0o755, verify); err != nil {
+		return fmt.Errorf("selfextract: extracting %s: %w", e.name, err)
 	}
 	return nil
 }
