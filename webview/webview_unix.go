@@ -49,8 +49,9 @@ func Open(opts Options) WindowInterface {
 	w.Navigate(opts.URL)
 	n := &nativeWindow{wv: w, handle: w.Window(), visible: true}
 	// macOS routes the clipboard and selection shortcuts through the app's main
-	// menu, which the webview engine never creates. No-op on Linux. Installed
-	// before Run() so the menu exists before the window processes any event.
+	// menu, which the webview engine never creates and which a bundled launch
+	// only gets as an empty placeholder. No-op on Linux. Installed before Run()
+	// so the menu exists before the window processes any event.
 	installMainMenu(n.handle)
 	// Keep the window on the app's own pages: navigations leaving the app
 	// origin open in the OS browser instead of replacing the UI.
