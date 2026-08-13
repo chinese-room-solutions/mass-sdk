@@ -475,6 +475,12 @@ sl-alert::part(base) {
 sl-alert::part(icon) { color: var(--mass-alert-accent); }
 sl-alert::part(close-button__base) { color: var(--mass-text-muted); }
 sl-alert::part(close-button__base):hover { color: var(--mass-text); }
+/* An action toast (massToast with a button) hugs its content instead of the
+   toast stack's full width; the auto margin keeps it on the stack's edge. */
+.sl-toast-stack sl-alert.mass-toast-action::part(base) {
+  width: fit-content;
+  margin-inline-start: auto;
+}
 
 /* ── Badges ──────────────────────────────────────────────────────────── */
 /* Generic badges driven by --mass-badge-* variables (light/dark aware).   */

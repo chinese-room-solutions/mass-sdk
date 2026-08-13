@@ -133,6 +133,11 @@
         if (typeof opts.action.onClick === "function") opts.action.onClick();
       });
       alert.appendChild(act);
+      // Styled via theme.css: an action toast hugs its content instead of the
+      // stack's full width, so the button isn't stranded in empty space. The
+      // class is the hook — the visual box is a shadow part, out of reach of
+      // inline styles here.
+      alert.classList.add("mass-toast-action");
     }
     document.body.appendChild(alert);
     // The autoloader registers sl-alert lazily, so .toast() may not exist yet
