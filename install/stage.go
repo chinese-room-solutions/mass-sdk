@@ -3,12 +3,12 @@ package install
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/chinese-room-solutions/mass-sdk/fsutil"
 	"github.com/chinese-room-solutions/mass-sdk/selfextract"
 )
 
@@ -182,8 +182,10 @@ func resolve(p string) (string, error) {
 	return filepath.Clean(abs), nil
 }
 
-// copyFile copies src to dst (overwriting), preserving the source's mode bits so
-// an executable stays executable.
+// copyFile copies src to dst, preserving the source's mode bits so an
+// executable stays executable. An existing dst is replaced by rename rather
+// than truncated in place — an upgrade re-runs the installer over binaries that
+// may still be running, and truncating those breaks on every platform.
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
@@ -194,17 +196,6 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		_ = out.Close() // cleanup; the copy error is the one to report
-		return err
-	}
-	if err := out.Close(); err != nil {
-		return err
-	}
-	// Ensure the mode is applied even if the file pre-existed with another mode.
-	return os.Chmod(dst, info.Mode())
+	_, err = fsutil.WriteAtomic(dst, in, info.Mode(), nil)
+	return err
 }

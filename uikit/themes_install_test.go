@@ -9,7 +9,7 @@ import (
 )
 
 func TestInstallRemoveTheme(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	pointConfigDirAtTemp(t)
 	t.Cleanup(resetLoadedThemes)
 
 	css := []byte("/* label: Neon Test */\n/* base: dark */\n--mass-bg-base: #101015;\n")
@@ -45,7 +45,7 @@ func TestInstallRemoveTheme(t *testing.T) {
 }
 
 func TestInstallThemeRejectsInvalid(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	pointConfigDirAtTemp(t)
 	t.Cleanup(resetLoadedThemes)
 
 	tests := []struct {
@@ -67,7 +67,7 @@ func TestInstallThemeRejectsInvalid(t *testing.T) {
 }
 
 func TestRemoveThemeRefusals(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	pointConfigDirAtTemp(t)
 	t.Cleanup(resetLoadedThemes)
 
 	require.ErrorIs(t, RemoveTheme("dark"), ErrThemeBuiltin)
