@@ -61,7 +61,11 @@ void installMainMenu(void *win) {
 	// Called before the run loop starts, so there is no pool of its own yet.
 	@autoreleasepool {
 		NSApplication *app = [NSApplication sharedApplication];
-		if ([app mainMenu] != nil) {
+		// Keyed on our own install, not on [app mainMenu]: when launched from
+		// Finder, LaunchServices has already put a placeholder main menu (one
+		// app-named item with an empty submenu) in place, so a non-nil mainMenu
+		// would skip the install and leave every Command shortcut dead.
+		if (gQuitTarget != nil) {
 			return;
 		}
 
