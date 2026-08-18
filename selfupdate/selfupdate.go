@@ -1,13 +1,17 @@
-// Package selfupdate lets an installed MASS app find and fetch a newer release
-// of itself from GitHub. [Latest] reads the newest published tag from the
-// redirect that /releases/latest serves, [IsNewer] decides whether that tag
-// beats the running build, and [FetchSetup] downloads the release's setup binary
-// into a directory, refusing to hand back anything whose SHA256SUMS entry does
-// not match.
+// Package selfupdate lets an installed MASS app find, fetch, and install a newer
+// release of itself from GitHub.
 //
-// The caller then re-runs that setup binary, which reinstalls over the existing
-// install — polling [Replaceable] first on Windows, where the old binaries must
-// have exited before they can be renamed over.
+// Apps use the two types: [Checker] keeps the answer to "is there a newer
+// release?", refreshed in the background and on demand, and [Applier] installs
+// one by re-running the app's own setup binary over its recorded install.
+//
+// Underneath, [Latest] reads the newest published tag from the redirect that
+// /releases/latest serves, [IsNewer] decides whether that tag beats the running
+// build, and [FetchSetup] downloads the release's setup binary, refusing to hand
+// back anything whose SHA256SUMS entry does not match. The setup binary's own
+// --relaunch half is [WaitReplaceable] plus [StartApp], which poll [Replaceable]
+// on Windows, where the old binaries must have exited before they can be renamed
+// over.
 package selfupdate
 
 import (
