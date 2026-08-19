@@ -475,6 +475,40 @@ sl-alert::part(base) {
 sl-alert::part(icon) { color: var(--mass-alert-accent); }
 sl-alert::part(close-button__base) { color: var(--mass-text-muted); }
 sl-alert::part(close-button__base):hover { color: var(--mass-text); }
+/* A toast's accent top edge doubles as its timer: the bar drains right-to-left
+   over the toast's duration, and holds while the pointer is over it — Shoelace
+   pauses its own auto-hide on mouseenter and resumes from what was left.
+   Two background layers rather than a border, so the edge keeps its full width
+   as the bar drains off it (a draining border would leave the toast with no top
+   edge at all) and both follow the panel's rounded corners; the border itself
+   goes transparent to let them through, and background-origin moves them out
+   over the border box.
+   background-size is declared as the drained end state, not left to the
+   keyframes: sl-alert cancels every animation on its base part before it fades
+   out, which drops the animation's fill and would fall back to `auto` — and an
+   `auto` gradient covers the whole panel, flashing the toast bar-coloured for
+   the length of the fade. */
+sl-alert.mass-toast-timer {
+  --mass-toast-edge: calc(var(--sl-panel-border-width) * 3);
+  --mass-toast-bar: color-mix(in srgb, var(--mass-alert-accent) 55%, var(--mass-border));
+}
+sl-alert.mass-toast-timer::part(base) {
+  border-top-color: transparent;
+  background-image:
+    linear-gradient(var(--mass-toast-bar), var(--mass-toast-bar)),
+    linear-gradient(var(--mass-border), var(--mass-border));
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  background-position: left top, left top;
+  background-size: 0 var(--mass-toast-edge), 100% var(--mass-toast-edge);
+  animation: mass-toast-drain var(--mass-toast-duration, 6s) linear forwards;
+}
+sl-alert.mass-toast-timer:hover::part(base) { animation-play-state: paused; }
+@keyframes mass-toast-drain {
+  from { background-size: 100% var(--mass-toast-edge), 100% var(--mass-toast-edge); }
+  to   { background-size: 0    var(--mass-toast-edge), 100% var(--mass-toast-edge); }
+}
+
 /* An action toast (massToast with a button) hugs its content instead of the
    toast stack's full width; the auto margin keeps it on the stack's edge. */
 .sl-toast-stack sl-alert.mass-toast-action::part(base) {

@@ -113,11 +113,21 @@
   window.massToast = function (message, opts) {
     opts = opts || {};
     var variant = opts.variant || "primary";
+    var duration = opts.duration == null ? 6000 : opts.duration;
     var alert = Object.assign(document.createElement("sl-alert"), {
       variant: variant,
       closable: true,
-      duration: opts.duration == null ? 6000 : opts.duration,
+      duration: duration,
     });
+    // The accent edge along the toast's top doubles as its timer: theme.css
+    // drains it right-to-left over exactly the time the toast has left, so a
+    // notice about to vanish says so. Not Shoelace's own `countdown`, which
+    // adds a second bar along the bottom instead of using the edge that is
+    // already there. A sticky toast (duration Infinity) has nothing to count.
+    if (duration < Infinity) {
+      alert.classList.add("mass-toast-timer");
+      alert.style.setProperty("--mass-toast-duration", duration + "ms");
+    }
     var icon = document.createElement("sl-icon");
     icon.setAttribute("slot", "icon");
     icon.setAttribute("name", opts.icon || TOAST_ICONS[variant] || TOAST_ICONS.primary);

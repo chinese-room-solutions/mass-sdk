@@ -35,6 +35,13 @@ var AlertJS string
 //go:embed theme.js
 var ThemeJS string
 
+// ReloadJS binds F5 and Ctrl/Cmd+R to a reload of the top-level window. A
+// webview has no browser chrome to provide them, and a page an app renders
+// outside [Layout] needs to include this itself.
+//
+//go:embed reload.js
+var ReloadJS string
+
 // ToInt32 converts a JSON value (string or float64) to int32.
 // Datastar sends sl-input type="number" values as JSON strings,
 // so this helper handles both representations.
