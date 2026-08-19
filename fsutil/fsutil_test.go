@@ -62,6 +62,12 @@ func TestWriteAtomic(t *testing.T) {
 	// open leaves that handle reading the OLD bytes rather than a truncated
 	// file. That is what makes re-running the installer over a live install safe.
 	t.Run("replaces without disturbing an open handle", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			// Windows refuses the rename outright while anything holds the file
+			// open, so there is no replaced inode to keep reading. Callers there
+			// wait for selfupdate.Replaceable instead.
+			t.Skip("POSIX rename semantics")
+		}
 		path := filepath.Join(t.TempDir(), "bin")
 		require.NoError(t, os.WriteFile(path, []byte("old"), 0o755))
 
