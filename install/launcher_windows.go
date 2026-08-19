@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -26,10 +27,23 @@ func (a AppSpec) createLauncher(spec LauncherSpec) (string, error) {
 		return "", err
 	}
 	lnk := filepath.Join(dir, a.DisplayName+".lnk")
-	if err := writeShellLink(lnk, spec.ExePath, spec.IconPath); err != nil {
+	if err := writeShellLink(lnk, spec.ExePath, windowsIconSource(spec.IconPath)); err != nil {
 		return "", err
 	}
 	return lnk, nil
+}
+
+// windowsIconSource keeps only an icon source a .lnk can actually read. Windows
+// takes a shortcut icon from an .ico, .exe or .dll; pointed at anything else —
+// callers pass the same PNG they hand to Linux and macOS — the shell shows a
+// blank page icon rather than falling back. Empty leaves the shortcut on the
+// target exe's own icon resource, which carries the same artwork.
+func windowsIconSource(iconPath string) string {
+	switch strings.ToLower(filepath.Ext(iconPath)) {
+	case ".ico", ".exe", ".dll":
+		return iconPath
+	}
+	return ""
 }
 
 func (a AppSpec) removeLauncher(perUser bool) error {
