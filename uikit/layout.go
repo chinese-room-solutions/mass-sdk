@@ -166,9 +166,10 @@ func layout(opts Options, title, body string, theme Theme) string {
 	<script>%[6]s</script>
 	<script>window.__massThemes = %[12]s;</script>
 	<script>%[7]s</script>
+	<script>%[17]s</script>
 </head>
 <body class="%[2]s min-h-screen">
 	%[8]s
 </body>
-</html>`, pathPrefix+AssetsPath(), themeClass, title, ThemeCSS, StateJS, AlertJS, ThemeJS, body, scheme, bgColor, themesStyle, ThemesJSON(), runtime.GOOS, string(info.Name), head, opts.lang())
+</html>`, pathPrefix+AssetsPath(), themeClass, title, ThemeCSS, StateJS, AlertJS, ThemeJS, body, scheme, bgColor, themesStyle, ThemesJSON(), runtime.GOOS, string(info.Name), head, opts.lang(), ReloadJS)
 }

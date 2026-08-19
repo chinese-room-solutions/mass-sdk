@@ -74,3 +74,12 @@ func TestAssetsHandlerServesUnderHashedPrefix(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
+
+// The reload keys are the only way to refresh a webview window, so a page that
+// loses this script silently loses F5 and Ctrl/Cmd+R with no other symptom.
+func TestLayoutBindsReloadKeys(t *testing.T) {
+	page := Layout("Title", "<p>body</p>", "dark")
+	require.Contains(t, page, ReloadJS)
+	require.Contains(t, ReloadJS, `e.key === "F5"`)
+	require.Contains(t, ReloadJS, "window.top")
+}
