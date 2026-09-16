@@ -213,21 +213,12 @@ func fetchChecksums(ctx context.Context, sumsURL string) (map[string]string, err
 	return sums, nil
 }
 
-// Replaceable reports whether the file at path can be replaced right now, by
-// probing the rename the installer will perform: path is renamed aside and back.
-// On Windows that fails while another process holds the file open, which is
-// exactly the condition a caller polls on before re-running the installer. On
-// POSIX a rename over a running binary always succeeds, so this is normally
-// true. A path that doesn't exist is replaceable — there is nothing in the way.
+// Replaceable reports whether the file at path can be replaced right now. A
+// path that doesn't exist is replaceable — there is nothing in the way. The
+// probe itself is OS-specific; see the per-OS replaceable implementations.
 func Replaceable(path string) bool {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		return true
 	}
-	probe := path + ".replaceprobe"
-	if err := os.Rename(path, probe); err != nil {
-		return false
-	}
-	// Put it back. If this fails the file now lives under probe — report false so
-	// the caller keeps waiting rather than acting on a half-moved install.
-	return os.Rename(probe, path) == nil
+	return replaceable(path)
 }
