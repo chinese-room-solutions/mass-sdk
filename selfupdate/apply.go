@@ -166,6 +166,7 @@ func SetupArgs(installDir string) []string {
 // process is running from.
 func (a Applier) runDetached(setupPath, installDir string) error {
 	cmd := exec.Command(setupPath, SetupArgs(installDir)...) //nolint:gosec // our own verified download.
+	hideConsole(cmd)
 	if a.Stdio != nil {
 		a.Stdio(cmd)
 	}
