@@ -15,8 +15,10 @@ import (
 )
 
 var (
-	dwmapi = windows.NewLazySystemDLL("dwmapi.dll")
-	user32 = windows.NewLazySystemDLL("user32.dll")
+	dwmapi     = windows.NewLazySystemDLL("dwmapi.dll")
+	user32     = windows.NewLazySystemDLL("user32.dll")
+	shcore     = windows.NewLazySystemDLL("shcore.dll")
+	shcoreProc = shcore.NewProc("SetProcessDpiAwareness")
 )
 
 type nativeWindow struct {
@@ -31,6 +33,7 @@ type nativeWindow struct {
 
 // Open creates a native webview window. Returns nil if WebView2 is unavailable.
 func Open(opts Options) WindowInterface {
+	enablePerMonitorDpiAwareness()
 	wv := webview2.NewWithOptions(webview2.WebViewOptions{
 		AutoFocus: true,
 		WindowOptions: webview2.WindowOptions{
@@ -81,6 +84,24 @@ func (w *nativeWindow) Run() { w.wv.Run() }
 func (w *nativeWindow) Terminate() { w.wv.Dispatch(w.wv.Terminate) }
 
 func (w *nativeWindow) Destroy() { w.wv.Destroy() }
+
+// enablePerMonitorDpiAwareness opts the process into per-monitor-v2 DPI
+// awareness before the first window is created. Without it Windows renders
+// the process at 96 DPI and bitmap-scales the window up to the monitor — the
+// whole UI goes soft on any display scaled past 100%. A host that already
+// declares awareness in its manifest (the stronger form) makes these calls
+// fail with E_ACCESSDENIED, which is the harmless no-op path. The context
+// call needs Win10 1703+; shcore is the pre-1703 fallback.
+func enablePerMonitorDpiAwareness() {
+	setCtx := user32.NewProc("SetProcessDpiAwarenessContext")
+	if setCtx.Find() == nil {
+		// DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 is the pseudo-handle -4.
+		if r, _, _ := setCtx.Call(^uintptr(3)); r != 0 {
+			return
+		}
+	}
+	_, _, _ = shcoreProc.Call(2)
+}
 
 const (
 	gwlpWndProc   = -4
