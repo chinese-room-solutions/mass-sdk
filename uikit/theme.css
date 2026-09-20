@@ -419,6 +419,51 @@ sl-input::part(form-control-label),
 sl-select::part(form-control-label),
 sl-textarea::part(form-control-label) { color: var(--mass-text-muted) !important; }
 
+/* ── Menus ───────────────────────────────────────────────────────────── */
+/* One slim standard for every sl-menu — theme pickers, overflow and context
+   menus. Shoelace's stock menu spends an 8px band above and below the rows and
+   reserves a hidden 1.5em gutter on BOTH sides of every row (check mark left,
+   submenu chevron right), so a short menu reads as mostly padding. Reclaim it:
+   a 3px band, tight rows, and gutters only where a row actually carries a
+   check or a submenu. Browsers without :has() keep the reserved (but slimmer)
+   chevron gutter. */
+sl-menu {
+  padding: 3px 0;
+}
+sl-menu sl-divider {
+  --spacing: 3px;
+}
+sl-menu-item::part(base) {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--mass-text);
+}
+sl-menu-item:hover::part(base) {
+  background-color: var(--mass-bg-hover);
+  color: var(--mass-text);
+}
+sl-menu-item:focus-visible::part(base) {
+  background-color: var(--mass-bg-active);
+  color: var(--mass-text);
+}
+/* The check-mark span renders on every row (visibility-hidden until checked):
+   keep a 1em gutter only on checkbox rows, tint the mark with the accent, and
+   drop the reserved chevron gutter on rows without a submenu. */
+sl-menu-item::part(checked-icon) {
+  width: 1em;
+  color: var(--mass-accent);
+}
+sl-menu-item:not([type="checkbox"])::part(checked-icon) {
+  display: none;
+}
+sl-menu-item::part(submenu-icon) {
+  width: 1em;
+}
+sl-menu-item:not(:has([slot="submenu"]))::part(submenu-icon) {
+  display: none;
+}
+
 /* ── Base body styles ────────────────────────────────────────────────── */
 /* Paint the root canvas, not just the body: the body is held visibility:hidden
    until Shoelace upgrades (see Layout's FOUC guard), so during load only the
